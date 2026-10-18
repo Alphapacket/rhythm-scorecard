@@ -135,7 +135,7 @@
         <div><p class="muted">This week</p><strong id="week">0%</strong><p id="week-detail" class="muted"></p></div>
         <div><p class="muted">Best streak ever</p><strong id="best">0 days</strong><p class="muted">One day at a time.</p></div>
       </div>
-      <p class="muted">Week: Mon–Sun, from your first saved day. Unscored days count as zero.</p>
+      <p class="muted">Week: Mon–Sun so far, from your first saved day. Unscored days count as zero.</p>
     </section>
     <aside class="control-note"><h2>Not yours to control</h2><p>Replies, offers, rosters, results, other people's timing. Don't score them.</p></aside>
     <footer>
@@ -207,7 +207,7 @@
       let ticked = 0, possible = 0;
       for (let i = 0; i < 7; i++) {
         const key = shift(monday, i);
-        if (first && key >= first) {
+        if (first && key >= first && key <= today) {
           possible += items(key).length;
           if (key <= today) ticked += score(data, key);
         }
@@ -280,6 +280,7 @@
     }
     function renderDay() {
       const date = localDate(selected), day = data.days[selected] || blank(selected);
+      $('block-heading').textContent = selected === today ? "Today's Block 1" : 'Block 1 for this day';
       $('date-title').textContent = date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
       $('date-year').textContent = `${date.getFullYear()} · ${selected === today ? 'Today' : 'Past day'}`;
       $('next').disabled = selected >= today;
