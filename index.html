@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rhythm">
+  <meta name="description" content="A simple daily scorecard. Judge the day by inputs.">
+  <title>Rhythm · Daily scorecard</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" type="image/png" href="icon-180.png">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --header: #111827; --white: #ffffff; --accent: #f59e0b; --page: #f3f4f6;
+      --card: #ffffff; --text: #111827; --muted: #6b7280; --border: #e5e7eb;
+      --soft: #f9fafb; --bar: #9ca3af; --focus: #b45309; --done: #fffbeb;
+      --header-muted: #d1d5db; --header-border: #374151; --shadow: #11182708; --clear: transparent;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #0b0f17; --card: #161b26; --text: #e5e7eb; --muted: #a1a9b8;
+        --border: #303849; --soft: #1d2432; --bar: #647084; --focus: #fbbf24;
+        --done: #302819; --shadow: #00000020;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--text); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; touch-action: manipulation; }
+    button:disabled { cursor: default; opacity: .35; }
+    button, input, textarea { -webkit-tap-highlight-color: var(--clear); }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: 560px; margin: auto; padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+    header { background: var(--header); color: var(--white); padding-top: calc(28px + env(safe-area-inset-top)); padding-bottom: 28px; }
+    .brand, .eyebrow { font-size: 11px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    .brand { color: var(--header-muted); margin: 0 0 16px; }
+    .brand span { color: var(--accent); padding-right: 7px; }
+    .date-nav { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+    h1 { font-size: clamp(16px, 4.5vw, 22px); line-height: 1.4; letter-spacing: .06em; margin: 0; }
+    .date-label { flex: 1; min-width: 0; }
+    #date-year { font-size: 12px; color: var(--header-muted); margin-top: 4px; }
+    .arrows { display: flex; gap: 6px; }
+    .arrow { width: 44px; min-height: 52px; border: 1px solid var(--header-border); border-radius: 12px; background: var(--header); color: var(--white); font-size: 24px; }
+    .pill { display: inline-block; margin-top: 18px; padding: 6px 12px; border-radius: 30px; background: var(--accent); color: var(--header); font-size: 12px; font-weight: 750; }
+    main { padding-top: 20px; padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; margin-bottom: 16px; padding: 22px; box-shadow: 0 2px 6px var(--shadow); }
+    h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+    p { margin: 10px 0 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .task-card { border-top: 3px solid var(--accent); }
+    #block1 { overflow-wrap: anywhere; white-space: pre-wrap; font-size: 18px; line-height: 1.5; }
+    #block1.empty { font-size: 14px; color: var(--muted); }
+    .card-heading { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .score { font-size: 13px; font-weight: 750; white-space: nowrap; }
+    .score strong { font-size: 22px; }
+    .checks-card { padding-bottom: 8px; }
+    #checks { margin: 16px -10px 0; }
+    .check-row { display: flex; align-items: center; gap: 13px; width: 100%; min-height: 64px; text-align: left; color: var(--text); background: var(--card); border: 0; border-top: 1px solid var(--border); padding: 13px 10px; font-size: 14px; line-height: 1.5; }
+    .check-row[aria-checked="true"] { background: var(--done); }
+    .checkbox { flex: 0 0 24px; height: 24px; border: 2px solid var(--bar); border-radius: 7px; display: grid; place-items: center; }
+    .checkbox::after { content: ""; width: 7px; height: 12px; border: solid var(--white); border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg); opacity: 0; }
+    [aria-checked="true"] .checkbox { border-color: var(--accent); background: var(--accent); }
+    [aria-checked="true"] .checkbox::after { opacity: 1; }
+    label { display: block; }
+    .input-row { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; }
+    input, textarea { min-width: 0; width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--soft); color: var(--text); padding: 12px; }
+    input { flex: 1; min-height: 52px; }
+    textarea { display: block; min-height: 170px; resize: vertical; margin-top: 12px; }
+    .primary, .secondary { min-height: 52px; border-radius: 10px; padding: 10px 15px; font-size: 13px; font-weight: 700; }
+    .primary { background: var(--accent); color: var(--header); border: 1px solid var(--accent); }
+    .secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .stats-top { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+    #streak { font-size: 52px; font-weight: 750; line-height: 1.15; letter-spacing: -.06em; }
+    .chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .bar-day { min-width: 0; text-align: center; color: var(--muted); font-size: 11px; }
+    .bar-track { height: 74px; display: flex; align-items: flex-end; background: var(--soft); border-radius: 5px; overflow: hidden; margin: 5px 0 6px; }
+    .bar { width: 100%; background: var(--bar); border-radius: 5px 5px 0 0; }
+    .bar.won { background: var(--accent); }
+    .bar-day.today { font-weight: 800; color: var(--text); }
+    .stat-details { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
+    .stat-details strong { display: block; font-size: 23px; margin: 3px 0; }
+    .stat-details p { margin: 0; }
+    .control-note { padding: 4px 10px 16px; color: var(--muted); font-size: 13px; }
+    .control-note h2 { font-size: 13px; color: var(--muted); }
+    footer { text-align: center; border-top: 1px solid var(--border); padding-top: 18px; }
+    footer p { font-size: 13px; color: var(--muted); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+    .notice { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+    #storage-note:not(:empty) { margin: 0 0 16px; border-left: 3px solid var(--accent); padding: 10px 12px; background: var(--card); }
+    #backup { margin-top: 16px; }
+    @media (prefers-reduced-motion: no-preference) { button { transition: background-color .15s ease; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <p class="brand"><span aria-hidden="true">✓</span> Rhythm / Daily scorecard</p>
+      <div class="date-nav">
+        <div class="date-label"><h1 id="date-title"></h1><div id="date-year"></div></div>
+        <nav class="arrows" aria-label="Choose a day">
+          <button class="arrow" id="previous" type="button" aria-label="Previous day">‹</button>
+          <button class="arrow" id="next" type="button" aria-label="Next day">›</button>
+        </nav>
+      </div>
+      <div id="countdown" class="pill" hidden></div>
+    </div>
+  </header>
+  <main class="wrap">
+    <noscript><p class="card">Enable JavaScript to use this on-device scorecard.</p></noscript>
+    <p id="storage-note" class="notice" role="status"></p>
+    <section class="card task-card" aria-labelledby="block-heading">
+      <h2 id="block-heading">Today's Block 1</h2><p id="block1"></p>
+    </section>
+    <section class="card checks-card" aria-labelledby="checks-heading">
+      <div class="card-heading"><h2 id="checks-heading" class="eyebrow">Controllables</h2><span id="score" class="score" aria-live="polite"></span></div>
+      <p class="muted">The only things you're scored on today.</p><div id="checks"></div>
+    </section>
+    <section id="tomorrow-card" class="card" aria-labelledby="tomorrow-heading">
+      <h2 id="tomorrow-heading"><label for="task-input">Tomorrow's Block 1 task</label></h2>
+      <p class="muted">One clear task. Make tomorrow easy to start.</p>
+      <form id="task-form" class="input-row"><input id="task-input" type="text" placeholder="What will you work on?" autocomplete="off"><button class="primary" type="submit">Save</button></form>
+      <p id="task-status" class="notice" role="status"></p>
+    </section>
+    <section class="card" aria-labelledby="stats-heading">
+      <h2 id="stats-heading" class="eyebrow">Your rhythm</h2>
+      <div class="stats-top"><span id="streak">0</span><span class="muted">day streak</span></div>
+      <p class="muted">A won day = 80% or more. Keep showing up.</p>
+      <p class="eyebrow muted">Last 7 days</p><div id="chart" class="chart" aria-label="Scores for the last seven days"></div>
+      <div class="stat-details">
+        <div><p class="muted">This week</p><strong id="week">0%</strong><p id="week-detail" class="muted"></p></div>
+        <div><p class="muted">Best streak ever</p><strong id="best">0 days</strong><p class="muted">One day at a time.</p></div>
+      </div>
+      <p class="muted">Week: Mon–Sun, from your first saved day. Unscored days count as zero.</p>
+    </section>
+    <aside class="control-note"><h2>Not yours to control</h2><p>Replies, offers, rosters, results, other people's timing. Don't score them.</p></aside>
+    <footer>
+      <p><em>Judge the day by inputs. Results show up later.</em></p>
+      <div class="actions"><button id="export" class="secondary" type="button">Export backup</button><button id="import" class="secondary" type="button">Import backup</button></div>
+      <p id="backup-status" role="status"></p><p>Your scores stay in this browser, on this device.</p>
+    </footer>
+    <section id="backup" class="card" hidden aria-labelledby="backup-heading">
+      <h2 id="backup-heading">Backup</h2><label for="backup-text" class="muted" id="backup-label">Backup JSON</label>
+      <textarea id="backup-text" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <p id="import-status" class="notice" role="status"></p>
+      <div class="actions"><button id="validate" class="primary" type="button">Check backup</button><button id="replace" class="primary" type="button" hidden>Replace my data</button><button id="cancel" class="secondary" type="button">Cancel</button></div>
+    </section>
+  </main>
+  <script>
+    'use strict';
+    const KEY = 'rhythm.v1';
+    const weekday = [
+      'Up at 6:30am, lights out at 10:30pm',
+      'Block 1 done, with something to show for it',
+      'Training done, or flex hour used on purpose',
+      'Commute spent learning', 'No impulse spending',
+      "Tomorrow's Block 1 task set before bed"
+    ];
+    const saturday = [weekday[0], 'Big Build done, with something to show for it',
+      'Phone out of the room during the Big Build', weekday[4], 'Rested on purpose, not scrolled by default'];
+    const sunday = [weekday[0], 'Training done', 'Weekly Review done',
+      "Next week's five Block 1 tasks written down", weekday[4]];
+    const $ = id => document.getElementById(id);
+    function dateKey(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+    function localDate(key) {
+      const [year, month, day] = key.split('-').map(Number);
+      const date = new Date(0);
+      date.setFullYear(year, month - 1, day);
+      date.setHours(12, 0, 0, 0);
+      return date;
+    }
+    function shift(key, amount) {
+      const date = localDate(key);
+      date.setDate(date.getDate() + amount);
+      return dateKey(date);
+    }
+    function serial(key) {
+      const date = localDate(key);
+      return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+    }
+    function items(key) {
+      const day = localDate(key).getDay();
+      return day === 0 ? sunday : day === 6 ? saturday : weekday;
+    }
+    function blank(key) { return { checks: items(key).map(() => false), block1: '' }; }
+    function score(data, key) { return (data.days[key]?.checks || []).filter(Boolean).length; }
+    function won(data, key) { return score(data, key) / items(key).length >= .8; }
+    function stats(data, today) {
+      const saved = Object.keys(data.days).filter(key => key <= today).sort();
+      const first = saved[0];
+      let streak = 0, best = 0, run = 0, previous = null;
+      let cursor = won(data, today) ? today : shift(today, -1);
+      while (first && cursor >= first && won(data, cursor)) { streak++; cursor = shift(cursor, -1); }
+      for (const key of saved) {
+        if (won(data, key)) {
+          run = previous && serial(key) - serial(previous) === 1 ? run + 1 : 1;
+          best = Math.max(best, run); previous = key;
+        } else { run = 0; previous = null; }
+      }
+      const monday = shift(today, -((localDate(today).getDay() + 6) % 7));
+      let ticked = 0, possible = 0;
+      for (let i = 0; i < 7; i++) {
+        const key = shift(monday, i);
+        if (first && key >= first) {
+          possible += items(key).length;
+          if (key <= today) ticked += score(data, key);
+        }
+      }
+      return { streak, best, ticked, possible, percent: possible ? Math.round(ticked / possible * 100) : 0 };
+    }
+    function validateData(value) {
+      const object = item => item !== null && typeof item === 'object' && !Array.isArray(item);
+      if (!object(value) || Object.keys(value).length !== 1 || !object(value.days)) throw new Error('Expected a JSON object containing only "days".');
+      const clean = { days: {} };
+      for (const [key, day] of Object.entries(value.days)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || dateKey(localDate(key)) !== key) throw new Error('Every day must have a valid YYYY-MM-DD date.');
+        if (!object(day) || Object.keys(day).sort().join(',') !== 'block1,checks' ||
+          typeof day.block1 !== 'string' || !Array.isArray(day.checks) ||
+          day.checks.length !== items(key).length || day.checks.some(check => typeof check !== 'boolean')) {
+          throw new Error('Each day needs a block1 string and exactly 6 weekday or 5 weekend boolean checks.');
+        }
+        clean.days[key] = { checks: [...day.checks], block1: day.block1 };
+      }
+      return clean;
+    }
+    let writable = true;
+    function load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        return raw === null ? { days: {} } : validateData(JSON.parse(raw));
+      } catch {
+        writable = false;
+        $('storage-note').textContent = 'Saved data could not be read. Changes stay in this tab. Export a backup before closing, or import a valid backup to restore saving.';
+        return { days: {} };
+      }
+    }
+    let data = load(), today = dateKey(new Date()), selected = today, pendingImport = null;
+    function save() {
+      try {
+        if (!writable) throw new Error('Storage unavailable');
+        localStorage.setItem(KEY, JSON.stringify(data));
+        $('storage-note').textContent = '';
+        return true;
+      } catch {
+        $('storage-note').textContent = 'Changes are only in this tab; browser storage is unavailable. Export a backup before closing.';
+        return false;
+      }
+    }
+    function ensure(key) { return data.days[key] || (data.days[key] = blank(key)); }
+    function renderScore() {
+      $('score').textContent = `Score ${score(data, selected)} / ${items(selected).length}`;
+    }
+    function renderStats() {
+      const result = stats(data, today);
+      $('streak').textContent = result.streak;
+      $('best').textContent = `${result.best} ${result.best === 1 ? 'day' : 'days'}`;
+      $('week').textContent = `${result.percent}%`;
+      $('week-detail').textContent = `${result.ticked} / ${result.possible} checks`;
+      $('chart').replaceChildren();
+      for (let i = -6; i <= 0; i++) {
+        const key = shift(today, i), count = score(data, key), max = items(key).length;
+        const column = document.createElement('div');
+        column.className = `bar-day${i === 0 ? ' today' : ''}`;
+        column.setAttribute('role', 'img');
+        column.setAttribute('aria-label', `${key}: ${count} of ${max}${won(data, key) ? ', won day' : ''}`);
+        const number = document.createElement('span'); number.textContent = count;
+        const track = document.createElement('div'); track.className = 'bar-track';
+        const bar = document.createElement('div'); bar.className = `bar${won(data, key) ? ' won' : ''}`;
+        bar.style.height = `${count / max * 100}%`;
+        const label = document.createElement('span');
+        label.textContent = localDate(key).toLocaleDateString('en-AU', { weekday: 'short' }).slice(0, 1);
+        track.append(bar); column.append(number, track, label); $('chart').append(column);
+      }
+    }
+    function renderDay() {
+      const date = localDate(selected), day = data.days[selected] || blank(selected);
+      $('date-title').textContent = date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+      $('date-year').textContent = `${date.getFullYear()} · ${selected === today ? 'Today' : 'Past day'}`;
+      $('next').disabled = selected >= today;
+      const left = serial('2026-11-29') - serial(today);
+      $('countdown').hidden = left < 0;
+      $('countdown').textContent = left === 0 ? 'Decision day' : `${left} ${left === 1 ? 'day' : 'days'} to decision`;
+      $('block1').textContent = day.block1 || "Not set — set it at tonight's shutdown.";
+      $('block1').className = day.block1 ? '' : 'empty';
+      $('checks').replaceChildren();
+      items(selected).forEach((text, index) => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'check-row'; button.setAttribute('role', 'checkbox');
+        button.setAttribute('aria-checked', String(day.checks[index]));
+        const box = document.createElement('span'); box.className = 'checkbox'; box.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span'); label.textContent = text;
+        button.append(box, label);
+        button.addEventListener('click', () => {
+          if (refreshDate() || selected > today) return;
+          const entry = ensure(selected); entry.checks[index] = !entry.checks[index];
+          button.setAttribute('aria-checked', String(entry.checks[index]));
+          save(); renderScore(); renderStats();
+        });
+        $('checks').append(button);
+      });
+      $('tomorrow-card').hidden = selected !== today;
+      $('task-input').value = data.days[shift(today, 1)]?.block1 || '';
+      $('task-status').textContent = '';
+      renderScore(); renderStats();
+    }
+    function refreshDate() {
+      const now = dateKey(new Date());
+      if (now === today) return false;
+      if (selected === today || selected > now) selected = now;
+      today = now; renderDay(); return true;
+    }
+    $('previous').addEventListener('click', () => { refreshDate(); selected = shift(selected, -1); renderDay(); });
+    $('next').addEventListener('click', () => { refreshDate(); if (selected < today) { selected = shift(selected, 1); renderDay(); } });
+    $('task-form').addEventListener('submit', event => {
+      event.preventDefault();
+      if (refreshDate() || selected !== today) return;
+      const task = $('task-input').value.trim();
+      ensure(today); ensure(shift(today, 1)).block1 = task;
+      if (items(today) === weekday && task) ensure(today).checks[5] = true;
+      const persisted = save(); renderDay();
+      $('task-status').textContent = persisted ? (task ? 'Saved for tomorrow. One less decision.' : "Tomorrow's task cleared.") : 'Updated in this tab. Export a backup to keep it.';
+    });
+    function openBackup(importing, value = '') {
+      pendingImport = null; $('backup').hidden = false;
+      $('backup-heading').textContent = importing ? 'Import backup' : 'Export backup';
+      $('backup-label').textContent = importing ? 'Paste your backup JSON below.' : 'Copy this JSON and keep it somewhere safe.';
+      $('backup-text').value = value; $('backup-text').readOnly = !importing;
+      $('validate').hidden = !importing; $('replace').hidden = true;
+      $('cancel').textContent = importing ? 'Cancel' : 'Close';
+      $('import-status').textContent = ''; $('backup-text').focus();
+      if (!importing) $('backup-text').select();
+    }
+    $('export').addEventListener('click', async () => {
+      const json = JSON.stringify(data, null, 2);
+      try {
+        await navigator.clipboard.writeText(json);
+        $('backup-status').textContent = 'Backup copied. Paste it somewhere safe.';
+      } catch {
+        $('backup-status').textContent = 'Copy your backup from the box below.';
+        openBackup(false, json);
+      }
+    });
+    $('import').addEventListener('click', () => { $('backup-status').textContent = ''; openBackup(true); });
+    $('validate').addEventListener('click', () => {
+      try {
+        pendingImport = validateData(JSON.parse($('backup-text').value));
+        if (Object.entries(pendingImport.days).some(([key, day]) => key > dateKey(new Date()) && day.checks.some(Boolean))) {
+          throw new Error('Future dates cannot contain completed checks.');
+        }
+        $('import-status').textContent = `Valid backup: ${Object.keys(pendingImport.days).length} saved days. Replace all current data? This cannot be undone. Export first if you need a copy.`;
+        $('backup-text').readOnly = true; $('validate').hidden = true; $('replace').hidden = false; $('replace').focus();
+      } catch (error) { pendingImport = null; $('import-status').textContent = `Could not import. ${error.message}`; }
+    });
+    $('replace').addEventListener('click', () => {
+      if (!pendingImport) return;
+      data = pendingImport; pendingImport = null; writable = true;
+      const persisted = save(); refreshDate(); renderDay(); $('backup').hidden = true;
+      $('backup-status').textContent = persisted ? 'Backup imported. Your scorecard is restored.' : 'Backup loaded in this tab only. Export before closing.';
+      $('import').focus();
+    });
+    $('cancel').addEventListener('click', () => { pendingImport = null; $('backup').hidden = true; $('import').focus(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDate(); });
+    window.addEventListener('focus', refreshDate);
+    setInterval(refreshDate, 30000);
+    renderDay();
+  </script>
+</body>
+</html>
