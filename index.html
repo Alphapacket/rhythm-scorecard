@@ -19,20 +19,22 @@
       --card: #ffffff; --text: #111827; --muted: #6b7280; --border: #e5e7eb;
       --soft: #f9fafb; --bar: #9ca3af; --focus: #b45309; --done: #fffbeb;
       --header-muted: #d1d5db; --header-border: #374151; --shadow: #11182708; --clear: transparent;
+      --danger: #b91c1c; --danger-bg: #fef2f2;
     }
     @media (prefers-color-scheme: dark) {
       :root {
         --page: #0b0f17; --card: #161b26; --text: #e5e7eb; --muted: #a1a9b8;
         --border: #303849; --soft: #1d2432; --bar: #647084; --focus: #fbbf24;
         --done: #302819; --shadow: #00000020;
+        --danger: #fca5a5; --danger-bg: #391e26;
       }
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--page); color: var(--text); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    button, input, textarea { font: inherit; }
+    button, input, textarea, select { font: inherit; }
     button { cursor: pointer; touch-action: manipulation; }
     button:disabled { cursor: default; opacity: .35; }
-    button, input, textarea { -webkit-tap-highlight-color: var(--clear); }
+    button, input, textarea, select { -webkit-tap-highlight-color: var(--clear); }
     :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
     [hidden] { display: none !important; }
     .wrap { max-width: 560px; margin: auto; padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
@@ -68,7 +70,7 @@
     [aria-checked="true"] .checkbox::after { opacity: 1; }
     label { display: block; }
     .input-row { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; }
-    input, textarea { min-width: 0; width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--soft); color: var(--text); padding: 12px; }
+    input, textarea, select { min-width: 0; width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--soft); color: var(--text); padding: 12px; }
     input { flex: 1; min-height: 52px; }
     textarea { display: block; min-height: 170px; resize: vertical; margin-top: 12px; }
     .primary, .secondary { min-height: 52px; border-radius: 10px; padding: 10px 15px; font-size: 13px; font-weight: 700; }
@@ -93,6 +95,29 @@
     .notice { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
     #storage-note:not(:empty) { margin: 0 0 16px; border-left: 3px solid var(--accent); padding: 10px 12px; background: var(--card); }
     #backup { margin-top: 16px; }
+    .view-switch { display: flex; gap: 8px; margin-bottom: 16px; }
+    .view-switch button { flex: 1; }
+    .view-switch [aria-pressed="true"] { border-color: var(--accent); background: var(--done); }
+    .field { margin-top: 16px; }
+    .field label { font-size: 13px; margin-bottom: 6px; }
+    select { min-height: 52px; }
+    summary { min-height: 52px; padding: 12px 0; cursor: pointer; font-weight: 700; }
+    details.card { padding-top: 8px; padding-bottom: 8px; }
+    details[open].card { padding-bottom: 22px; }
+    .pulse-text { min-height: 120px; margin-top: 0; }
+    .night-button { width: 100%; min-height: 72px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: left; background: var(--soft); color: var(--text); }
+    .night-button strong, .night-button span { display: block; }
+    .night-button span { font-size: 12px; margin-top: 4px; }
+    .night-button.at-limit { background: var(--accent); border-color: var(--accent); color: var(--header); }
+    .night-button.over-limit { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+    .project-counts { margin: 14px 0 0; }
+    .project-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-top: 1px solid var(--border); }
+    .project-row dd { margin: 0; font-weight: 750; }
+    .note-day { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border); }
+    .note-day h3 { font-size: 15px; margin: 0; }
+    .note-field { margin-top: 14px; }
+    .note-field strong { display: block; font-size: 12px; color: var(--muted); }
+    .note-field p { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 4px; }
     @media (prefers-reduced-motion: no-preference) { button { transition: background-color .15s ease; } }
   </style>
 </head>
@@ -113,9 +138,26 @@
   <main class="wrap">
     <noscript><p class="card">Enable JavaScript to use this on-device scorecard.</p></noscript>
     <p id="storage-note" class="notice" role="status"></p>
+    <div class="view-switch" role="group" aria-label="Scorecard view">
+      <button id="daily-tab" class="secondary" type="button" aria-pressed="true" aria-controls="daily-view">Daily</button>
+      <button id="review-tab" class="secondary" type="button" aria-pressed="false" aria-controls="review-view">Weekly Review</button>
+    </div>
+    <div id="daily-view">
     <section class="card task-card" aria-labelledby="block-heading">
       <h2 id="block-heading">Today's Block 1</h2><p id="block1"></p>
+      <div class="field"><label for="block1-project">Project tag (optional)</label><select id="block1-project" data-project-select></select></div>
     </section>
+    <details class="card" id="other-blocks">
+      <summary>Block 2 &amp; Saturday Big Build</summary>
+      <p class="muted">Optional tasks and project tags. Separate from your score.</p>
+      <div class="field"><label for="block2-task">Block 2 task</label><input id="block2-task" type="text" autocomplete="off" placeholder="One light task"></div>
+      <div class="field"><label for="block2-project">Block 2 project tag</label><select id="block2-project" data-project-select></select></div>
+      <div id="big-build-fields" hidden>
+        <div class="field"><label for="big-build-task">Saturday Big Build task</label><input id="big-build-task" type="text" autocomplete="off" placeholder="The week's most important output"></div>
+        <div class="field"><label for="big-build-project">Big Build project tag</label><select id="big-build-project" data-project-select></select></div>
+      </div>
+      <p id="blocks-status" class="notice" role="status">Autosaves on this device.</p>
+    </details>
     <section class="card checks-card" aria-labelledby="checks-heading">
       <div class="card-heading"><h2 id="checks-heading" class="eyebrow">Controllables</h2><span id="score" class="score" aria-live="polite"></span></div>
       <p class="muted">The only things you're scored on today.</p><div id="checks"></div>
@@ -124,7 +166,22 @@
       <h2 id="tomorrow-heading"><label for="task-input">Tomorrow's Block 1 task</label></h2>
       <p class="muted">One clear task. Make tomorrow easy to start.</p>
       <form id="task-form" class="input-row"><input id="task-input" type="text" placeholder="What will you work on?" autocomplete="off"><button class="primary" type="submit">Save</button></form>
+      <div class="field"><label for="tomorrow-project">Tomorrow's project tag (optional)</label><select id="tomorrow-project" data-project-select></select></div>
       <p id="task-status" class="notice" role="status"></p>
+    </section>
+    <details id="pulse-card" class="card">
+      <summary>Nightly note / Daily Pulse</summary>
+      <p class="muted">All optional. Your notes do not change your score or streak.</p>
+      <div class="field"><label for="pulse-forward">What moved me forward today?</label><input id="pulse-forward" type="text" autocomplete="off"></div>
+      <div class="field"><label for="pulse-backwards">What could pull me backwards?</label><input id="pulse-backwards" type="text" autocomplete="off"></div>
+      <div class="field"><label for="pulse-priority">One priority for tomorrow</label><input id="pulse-priority" type="text" autocomplete="off"></div>
+      <div class="field"><label for="pulse-anything">Anything else — what happened, what didn't get done and why.</label><textarea id="pulse-anything" class="pulse-text" rows="4"></textarea></div>
+      <p id="pulse-status" class="notice" role="status">Autosaves on this device.</p>
+    </details>
+    <section class="card" aria-label="Weekly EV bot night limit">
+      <button id="ev-night" class="night-button" type="button" aria-pressed="false"><strong id="ev-count">EV bot nights: 0/1</strong><span id="ev-action"></span></button>
+      <p id="ev-range" class="muted"></p><p class="muted">One night per week. Tap again to undo. Separate from your score.</p>
+      <p id="ev-status" class="notice" role="status"></p>
     </section>
     <section class="card" aria-labelledby="stats-heading">
       <h2 id="stats-heading" class="eyebrow">Your rhythm</h2>
@@ -137,6 +194,20 @@
       </div>
       <p class="muted">Week: Mon–Sun so far, from your first saved day. Unscored days count as zero.</p>
     </section>
+    </div>
+    <div id="review-view" hidden>
+      <section class="card" aria-labelledby="review-heading"><h2 id="review-heading">Weekly Review</h2><p id="review-range" class="muted"></p><p class="muted">Review your inputs. Use the arrows above to change weeks.</p></section>
+      <section class="card" aria-labelledby="projects-heading">
+        <h2 id="projects-heading">Tagged blocks by project</h2>
+        <p class="muted">Tasks with both text and a project tag. Each block counts once; separate from your score.</p>
+        <dl id="project-counts" class="project-counts"></dl>
+      </section>
+      <section class="card" aria-label="Weekly EV bot night limit">
+        <button id="review-ev-night" class="night-button" type="button" aria-pressed="false"><strong id="review-ev-count">EV bot nights: 0/1</strong><span id="review-ev-action"></span></button>
+        <p id="review-ev-days" class="muted"></p><p id="review-ev-status" class="notice" role="status"></p>
+      </section>
+      <section class="card" aria-labelledby="notes-heading"><h2 id="notes-heading">This week's notes</h2><div id="review-notes"></div></section>
+    </div>
     <aside class="control-note"><h2>Not yours to control</h2><p>Replies, offers, rosters, results, other people's timing. Don't score them.</p></aside>
     <footer>
       <p><em>Judge the day by inputs. Results show up later.</em></p>
@@ -153,6 +224,13 @@
   <script>
     'use strict';
     const KEY = 'rhythm.v1';
+    const PROJECTS = ['Greyhound', 'Career', 'Finance', 'Learning', 'Other'];
+    const PULSE_FIELDS = {
+      forward: 'What moved me forward today?',
+      backwards: 'What could pull me backwards?',
+      priority: 'One priority for tomorrow',
+      anything: "Anything else — what happened, what didn't get done and why."
+    };
     const weekday = [
       'Up at 6:30am, lights out at 10:30pm',
       'Block 1 done, with something to show for it',
@@ -188,7 +266,34 @@
       const day = localDate(key).getDay();
       return day === 0 ? sunday : day === 6 ? saturday : weekday;
     }
-    function blank(key) { return { checks: items(key).map(() => false), block1: '' }; }
+    function blank(key) {
+      return {
+        checks: items(key).map(() => false), block1: '', block1Project: '',
+        block2: { task: '', project: '' }, bigBuild: { task: '', project: '' },
+        pulse: { forward: '', backwards: '', priority: '', anything: '' }, evBotNight: false
+      };
+    }
+    function weekStart(key) { return shift(key, -((localDate(key).getDay() + 6) % 7)); }
+    function shortDate(key) { return localDate(key).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); }
+    function dayLabel(key) { return localDate(key).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }); }
+    function weekRange(key) { const start = weekStart(key); return `${shortDate(start)} – ${shortDate(shift(start, 6))} ${localDate(shift(start, 6)).getFullYear()}`; }
+    function hasPulse(pulse) { return Object.keys(PULSE_FIELDS).some(field => pulse?.[field]?.trim()); }
+    function weeklySummary(data, selected, today) {
+      const counts = Object.fromEntries(PROJECTS.map(project => [project, 0]));
+      const notes = [], nights = [], start = weekStart(selected);
+      for (let i = 0; i < 7; i++) {
+        const key = shift(start, i), day = data.days[key];
+        if (!day || key > today) continue;
+        const blocks = [{ task: day.block1, project: day.block1Project }, day.block2];
+        if (localDate(key).getDay() === 6) blocks.push(day.bigBuild);
+        for (const block of blocks) {
+          if (block?.task?.trim() && PROJECTS.includes(block.project)) counts[block.project]++;
+        }
+        if (hasPulse(day.pulse)) notes.push({ key, pulse: day.pulse });
+        if (day.evBotNight) nights.push(key);
+      }
+      return { counts, notes, nights };
+    }
     function score(data, key) { return (data.days[key]?.checks || []).filter(Boolean).length; }
     function won(data, key) { return score(data, key) / items(key).length >= .8; }
     function stats(data, today) {
@@ -203,7 +308,7 @@
           best = Math.max(best, run); previous = key;
         } else { run = 0; previous = null; }
       }
-      const monday = shift(today, -((localDate(today).getDay() + 6) % 7));
+      const monday = weekStart(today);
       let ticked = 0, possible = 0;
       for (let i = 0; i < 7; i++) {
         const key = shift(monday, i);
@@ -217,15 +322,44 @@
     function validateData(value) {
       const object = item => item !== null && typeof item === 'object' && !Array.isArray(item);
       if (!object(value) || Object.keys(value).length !== 1 || !object(value.days)) throw new Error('Expected a JSON object containing only "days".');
+      const project = tag => typeof tag === 'string' && (tag === '' || PROJECTS.includes(tag));
+      const allowed = ['checks', 'block1', 'block1Project', 'block2', 'bigBuild', 'pulse', 'evBotNight'];
       const clean = { days: {} };
       for (const [key, day] of Object.entries(value.days)) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || dateKey(localDate(key)) !== key) throw new Error('Every day must have a valid YYYY-MM-DD date.');
-        if (!object(day) || Object.keys(day).sort().join(',') !== 'block1,checks' ||
+        if (!object(day) || Object.keys(day).some(field => !allowed.includes(field)) ||
           typeof day.block1 !== 'string' || !Array.isArray(day.checks) ||
           day.checks.length !== items(key).length || day.checks.some(check => typeof check !== 'boolean')) {
           throw new Error('Each day needs a block1 string and exactly 6 weekday or 5 weekend boolean checks.');
         }
-        clean.days[key] = { checks: [...day.checks], block1: day.block1 };
+        // Older backups contain only checks and block1. Add defaults in memory;
+        // loading never writes over the stored copy. Persist only after an edit.
+        const normalized = blank(key);
+        normalized.checks = [...day.checks]; normalized.block1 = day.block1;
+        if (Object.hasOwn(day, 'block1Project')) {
+          if (!project(day.block1Project)) throw new Error('Unknown Block 1 project tag.');
+          normalized.block1Project = day.block1Project;
+        }
+        for (const field of ['block2', 'bigBuild']) {
+          if (!Object.hasOwn(day, field)) continue;
+          const block = day[field];
+          if (!object(block) || Object.keys(block).sort().join(',') !== 'project,task' || typeof block.task !== 'string' || !project(block.project)) {
+            throw new Error('Blocks need task text and a valid optional project tag.');
+          }
+          normalized[field] = { task: block.task, project: block.project };
+        }
+        if (Object.hasOwn(day, 'pulse')) {
+          if (!object(day.pulse) || Object.keys(day.pulse).sort().join(',') !== Object.keys(PULSE_FIELDS).sort().join(',') ||
+            Object.keys(PULSE_FIELDS).some(field => typeof day.pulse[field] !== 'string')) {
+            throw new Error('Daily Pulse needs four optional text fields.');
+          }
+          normalized.pulse = { ...day.pulse };
+        }
+        if (Object.hasOwn(day, 'evBotNight')) {
+          if (typeof day.evBotNight !== 'boolean') throw new Error('EV bot night must be true or false.');
+          normalized.evBotNight = day.evBotNight;
+        }
+        clean.days[key] = normalized;
       }
       return clean;
     }
@@ -240,7 +374,7 @@
         return { days: {} };
       }
     }
-    let data = load(), today = dateKey(new Date()), selected = today, pendingImport = null;
+    let data = load(), today = dateKey(new Date()), selected = today, pendingImport = null, view = 'day';
     function save() {
       try {
         if (!writable) throw new Error('Storage unavailable');
@@ -278,17 +412,75 @@
         track.append(bar); column.append(number, track, label); $('chart').append(column);
       }
     }
+    function renderNights() {
+      const { nights } = weeklySummary(data, selected, today);
+      const logged = Boolean(data.days[selected]?.evBotNight);
+      for (const prefix of ['', 'review-']) {
+        const button = $(`${prefix}ev-night`);
+        button.className = `night-button${nights.length > 1 ? ' over-limit' : nights.length === 1 ? ' at-limit' : ''}`;
+        button.setAttribute('aria-pressed', String(logged));
+        $(`${prefix}ev-count`).textContent = `EV bot nights: ${nights.length}/1`;
+        $(`${prefix}ev-action`).textContent = `${logged ? 'Logged' : 'Tap to log'} for ${dayLabel(selected)}${logged ? ' · tap to undo' : ''}${nights.length > 1 ? ' · weekly limit exceeded' : ''}`;
+      }
+      $('ev-range').textContent = `Week: ${weekRange(selected)}`;
+      $('review-ev-days').textContent = nights.length ? `Logged: ${nights.map(dayLabel).join('; ')}.` : 'No nights logged this week. Separate from your score.';
+    }
+    function renderReview() {
+      const result = weeklySummary(data, selected, today);
+      $('review-range').textContent = weekRange(selected);
+      $('project-counts').replaceChildren();
+      for (const project of PROJECTS) {
+        const row = document.createElement('div'); row.className = 'project-row';
+        const name = document.createElement('dt'); name.textContent = project;
+        const count = document.createElement('dd'); count.textContent = result.counts[project];
+        row.append(name, count); $('project-counts').append(row);
+      }
+      $('review-notes').replaceChildren();
+      if (!result.notes.length) {
+        const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'No notes saved this week.';
+        $('review-notes').append(empty);
+      }
+      for (const { key, pulse } of result.notes) {
+        const article = document.createElement('article'); article.className = 'note-day';
+        const heading = document.createElement('h3'); heading.textContent = `${dayLabel(key)} ${localDate(key).getFullYear()}`;
+        article.append(heading);
+        for (const [field, label] of Object.entries(PULSE_FIELDS)) {
+          if (!pulse[field].trim()) continue;
+          const section = document.createElement('div'); section.className = 'note-field';
+          const title = document.createElement('strong'); title.textContent = label;
+          const content = document.createElement('p'); content.textContent = pulse[field];
+          section.append(title, content); article.append(section);
+        }
+        $('review-notes').append(article);
+      }
+      renderNights();
+    }
     function renderDay() {
       const date = localDate(selected), day = data.days[selected] || blank(selected);
       $('block-heading').textContent = selected === today ? "Today's Block 1" : 'Block 1 for this day';
-      $('date-title').textContent = date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
-      $('date-year').textContent = `${date.getFullYear()} · ${selected === today ? 'Today' : 'Past day'}`;
-      $('next').disabled = selected >= today;
+      $('daily-view').hidden = view !== 'day'; $('review-view').hidden = view !== 'week';
+      $('daily-tab').setAttribute('aria-pressed', String(view === 'day'));
+      $('review-tab').setAttribute('aria-pressed', String(view === 'week'));
+      $('date-title').textContent = view === 'week' ? `WEEK OF ${localDate(weekStart(selected)).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }).toUpperCase()}` : date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
+      $('date-year').textContent = `${date.getFullYear()} · ${view === 'week' ? (weekStart(selected) === weekStart(today) ? 'This week' : 'Past week') : (selected === today ? 'Today' : 'Past day')}`;
+      $('previous').setAttribute('aria-label', view === 'week' ? 'Previous week' : 'Previous day');
+      $('next').setAttribute('aria-label', view === 'week' ? 'Next week' : 'Next day');
+      $('next').disabled = view === 'week' ? weekStart(selected) >= weekStart(today) : selected >= today;
       const left = serial('2026-11-29') - serial(today);
       $('countdown').hidden = left < 0;
       $('countdown').textContent = left === 0 ? 'Decision day' : `${left} ${left === 1 ? 'day' : 'days'} to decision`;
       $('block1').textContent = day.block1 || "Not set — set it at tonight's shutdown.";
       $('block1').className = day.block1 ? '' : 'empty';
+      $('block1-project').value = day.block1Project;
+      $('block2-task').value = day.block2.task; $('block2-project').value = day.block2.project;
+      $('big-build-task').value = day.bigBuild.task; $('big-build-project').value = day.bigBuild.project;
+      $('big-build-fields').hidden = date.getDay() !== 6;
+      $('other-blocks').open = Boolean(day.block2.task || day.block2.project || (date.getDay() === 6 && (day.bigBuild.task || day.bigBuild.project)));
+      for (const field of Object.keys(PULSE_FIELDS)) $(`pulse-${field}`).value = day.pulse[field];
+      $('pulse-card').open = hasPulse(day.pulse);
+      $('blocks-status').textContent = 'Autosaves on this device.';
+      $('pulse-status').textContent = 'Autosaves on this device.';
+      $('ev-status').textContent = ''; $('review-ev-status').textContent = '';
       $('checks').replaceChildren();
       items(selected).forEach((text, index) => {
         const button = document.createElement('button');
@@ -307,8 +499,9 @@
       });
       $('tomorrow-card').hidden = selected !== today;
       $('task-input').value = data.days[shift(today, 1)]?.block1 || '';
+      $('tomorrow-project').value = data.days[shift(today, 1)]?.block1Project || '';
       $('task-status').textContent = '';
-      renderScore(); renderStats();
+      renderScore(); renderStats(); renderReview();
     }
     function refreshDate() {
       const now = dateKey(new Date());
@@ -316,17 +509,59 @@
       if (selected === today || selected > now) selected = now;
       today = now; renderDay(); return true;
     }
-    $('previous').addEventListener('click', () => { refreshDate(); selected = shift(selected, -1); renderDay(); });
-    $('next').addEventListener('click', () => { refreshDate(); if (selected < today) { selected = shift(selected, 1); renderDay(); } });
+    $('previous').addEventListener('click', () => { refreshDate(); selected = shift(selected, view === 'week' ? -7 : -1); renderDay(); });
+    $('next').addEventListener('click', () => {
+      refreshDate();
+      if (view === 'week' ? weekStart(selected) < weekStart(today) : selected < today) {
+        const target = shift(selected, view === 'week' ? 7 : 1);
+        selected = target > today ? today : target; renderDay();
+      }
+    });
+    for (const [id, value] of [['daily-tab', 'day'], ['review-tab', 'week']]) {
+      $(id).addEventListener('click', () => { refreshDate(); view = value; renderDay(); });
+    }
     $('task-form').addEventListener('submit', event => {
       event.preventDefault();
       if (refreshDate() || selected !== today) return;
       const task = $('task-input').value.trim();
       ensure(today); ensure(shift(today, 1)).block1 = task;
+      ensure(shift(today, 1)).block1Project = $('tomorrow-project').value;
       if (items(today) === weekday && task) ensure(today).checks[5] = true;
       const persisted = save(); renderDay();
       $('task-status').textContent = persisted ? (task ? 'Saved for tomorrow. One less decision.' : "Tomorrow's task cleared.") : 'Updated in this tab. Export a backup to keep it.';
     });
+    function autosaveDay(edit, statusId) {
+      if (refreshDate() || selected > today) return;
+      edit(ensure(selected));
+      const persisted = save();
+      if (statusId) $(statusId).textContent = persisted ? 'Saved on this device.' : 'Kept in this tab. Export a backup before closing.';
+      renderStats(); renderReview();
+    }
+    $('block1-project').addEventListener('change', () => {
+      autosaveDay(day => { day.block1Project = $('block1-project').value; });
+    });
+    for (const [id, block, field] of [
+      ['block2-task', 'block2', 'task'], ['block2-project', 'block2', 'project'],
+      ['big-build-task', 'bigBuild', 'task'], ['big-build-project', 'bigBuild', 'project']
+    ]) {
+      $(id).addEventListener(field === 'task' ? 'input' : 'change', () => {
+        autosaveDay(day => { day[block][field] = $(id).value; }, 'blocks-status');
+      });
+    }
+    for (const field of Object.keys(PULSE_FIELDS)) {
+      $(`pulse-${field}`).addEventListener('input', () => {
+        autosaveDay(day => { day.pulse[field] = $(`pulse-${field}`).value; }, 'pulse-status');
+      });
+    }
+    function toggleNight() {
+      if (refreshDate() || selected > today) return;
+      const day = ensure(selected); day.evBotNight = !day.evBotNight;
+      const persisted = save(); renderStats(); renderReview();
+      const message = persisted ? (day.evBotNight ? `Night logged for ${dayLabel(selected)}.` : `Night removed for ${dayLabel(selected)}.`) : 'Kept in this tab. Export a backup before closing.';
+      $('ev-status').textContent = message; $('review-ev-status').textContent = message;
+    }
+    $('ev-night').addEventListener('click', toggleNight);
+    $('review-ev-night').addEventListener('click', toggleNight);
     function openBackup(importing, value = '') {
       pendingImport = null; $('backup').hidden = false;
       $('backup-heading').textContent = importing ? 'Import backup' : 'Export backup';
@@ -351,8 +586,8 @@
     $('validate').addEventListener('click', () => {
       try {
         pendingImport = validateData(JSON.parse($('backup-text').value));
-        if (Object.entries(pendingImport.days).some(([key, day]) => key > dateKey(new Date()) && day.checks.some(Boolean))) {
-          throw new Error('Future dates cannot contain completed checks.');
+        if (Object.entries(pendingImport.days).some(([key, day]) => key > dateKey(new Date()) && (day.checks.some(Boolean) || day.evBotNight))) {
+          throw new Error('Future dates cannot contain completed checks or logged nights.');
         }
         $('import-status').textContent = `Valid backup: ${Object.keys(pendingImport.days).length} saved days. Replace all current data? This cannot be undone. Export first if you need a copy.`;
         $('backup-text').readOnly = true; $('validate').hidden = true; $('replace').hidden = false; $('replace').focus();
@@ -369,6 +604,11 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDate(); });
     window.addEventListener('focus', refreshDate);
     setInterval(refreshDate, 30000);
+    for (const select of document.querySelectorAll('[data-project-select]')) {
+      for (const value of ['', ...PROJECTS]) {
+        const option = document.createElement('option'); option.value = value; option.textContent = value || 'None'; select.append(option);
+      }
+    }
     renderDay();
   </script>
 </body>
