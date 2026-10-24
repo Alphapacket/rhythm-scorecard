@@ -118,6 +118,23 @@
     .note-field { margin-top: 14px; }
     .note-field strong { display: block; font-size: 12px; color: var(--muted); }
     .note-field p { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 4px; }
+    .paste-launch { width: 100%; margin-bottom: 16px; }
+    dialog { width: calc(100% - 32px); max-width: 520px; max-height: calc(100dvh - 32px); overflow-y: auto; border: 1px solid var(--border); border-radius: 18px; padding: 22px; background: var(--card); color: var(--text); }
+    dialog::backdrop { background: var(--header); opacity: .7; }
+    dialog textarea { min-height: 210px; }
+    .task-title { display: block; width: 100%; min-height: 52px; text-align: left; border: 0; padding: 8px 0; background: var(--clear); color: var(--text); }
+    .task-title:disabled { opacity: 1; }
+    #block1 { display: block; }
+    .task-details-button { margin-top: 10px; }
+    .task-info { margin: 16px 0 0; }
+    .task-info dt { font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 14px; }
+    .task-info dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .task-list { list-style: none; padding: 0; margin: 10px 0 0; }
+    .task-list button { width: 100%; min-height: 52px; padding: 14px 0; border: 0; border-top: 1px solid var(--border); background: var(--clear); color: var(--text); text-align: left; }
+    .task-list strong, .task-list span { display: block; overflow-wrap: anywhere; }
+    .task-list span { margin-top: 5px; font-size: 14px; }
+    .preview-task { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #paste-error, #paste-conflict { color: var(--danger); }
     @media (prefers-reduced-motion: no-preference) { button { transition: background-color .15s ease; } }
   </style>
 </head>
@@ -142,18 +159,23 @@
       <button id="daily-tab" class="secondary" type="button" aria-pressed="true" aria-controls="daily-view">Daily</button>
       <button id="review-tab" class="secondary" type="button" aria-pressed="false" aria-controls="review-view">Weekly Review</button>
     </div>
+    <button id="paste-task" class="secondary paste-launch" type="button">Paste task</button>
+    <p id="paste-status" class="notice" role="status"></p>
+    <section id="planned-card" class="card" hidden aria-labelledby="planned-heading"><h2 id="planned-heading">Upcoming tasks</h2><ul id="planned-tasks" class="task-list"></ul></section>
     <div id="daily-view">
     <section class="card task-card" aria-labelledby="block-heading">
-      <h2 id="block-heading">Today's Block 1</h2><p id="block1"></p>
+      <h2 id="block-heading">Today's Block 1</h2><button id="block1-open" class="task-title" type="button" aria-haspopup="dialog"><span id="block1"></span></button>
       <div class="field"><label for="block1-project">Project tag (optional)</label><select id="block1-project" data-project-select></select></div>
     </section>
     <details class="card" id="other-blocks">
       <summary>Block 2 &amp; Saturday Big Build</summary>
       <p class="muted">Optional tasks and project tags. Separate from your score.</p>
       <div class="field"><label for="block2-task">Block 2 task</label><input id="block2-task" type="text" autocomplete="off" placeholder="One light task"></div>
+      <button id="block2-details" class="secondary task-details-button" type="button" hidden>Task details</button>
       <div class="field"><label for="block2-project">Block 2 project tag</label><select id="block2-project" data-project-select></select></div>
       <div id="big-build-fields" hidden>
         <div class="field"><label for="big-build-task">Saturday Big Build task</label><input id="big-build-task" type="text" autocomplete="off" placeholder="The week's most important output"></div>
+        <button id="big-build-details" class="secondary task-details-button" type="button" hidden>Task details</button>
         <div class="field"><label for="big-build-project">Big Build project tag</label><select id="big-build-project" data-project-select></select></div>
       </div>
       <p id="blocks-status" class="notice" role="status">Autosaves on this device.</p>
@@ -221,10 +243,34 @@
       <div class="actions"><button id="validate" class="primary" type="button">Check backup</button><button id="replace" class="primary" type="button" hidden>Replace my data</button><button id="cancel" class="secondary" type="button">Cancel</button></div>
     </section>
   </main>
+  <dialog id="paste-dialog" aria-labelledby="paste-heading">
+    <h2 id="paste-heading">Paste task</h2>
+    <p class="muted">Paste one RHYTHM TASK card. Weekdays use the next occurrence, including today. Nothing is saved until you confirm.</p>
+    <p id="paste-error" class="notice" role="alert"></p>
+    <form id="paste-form">
+      <div class="field"><label for="paste-text">Task card</label><textarea id="paste-text" rows="8" spellcheck="false" autocapitalize="off" placeholder="RHYTHM TASK&#10;Day: Monday&#10;Block: Block 1&#10;Task: One clear task&#10;Done when: A specific output&#10;Time: 60 minutes&#10;Context: Optional notes"></textarea></div>
+      <div class="actions"><button id="paste-preview" class="primary" type="submit">Preview</button><button id="paste-cancel" class="secondary" type="button">Cancel</button></div>
+    </form>
+    <section id="paste-preview-panel" hidden aria-labelledby="preview-heading">
+      <h3 id="preview-heading">Preview</h3>
+      <p id="paste-date"></p><p id="paste-task-preview" class="preview-task"></p>
+      <div class="field"><label for="paste-block">Block</label><select id="paste-block"><option value="">Choose a block</option><option value="block1">Block 1</option><option value="block2">Block 2</option><option value="bigBuild">Saturday Big Build</option></select></div>
+      <p id="paste-block-note" class="muted"></p><p id="paste-conflict" class="notice" role="status"></p>
+      <div class="actions"><button id="paste-confirm" class="primary" type="button" disabled>Confirm</button><button id="paste-edit" class="secondary" type="button">Edit card</button><button id="paste-preview-cancel" class="secondary" type="button">Cancel</button></div>
+    </section>
+  </dialog>
+  <dialog id="task-dialog" aria-labelledby="task-detail-heading">
+    <h2 id="task-detail-heading">Task details</h2><p id="task-detail-date" class="muted"></p><p id="task-detail-text" class="preview-task"></p>
+    <dl id="task-detail-info" class="task-info"></dl>
+    <button id="task-complete" class="check-row" type="button" role="checkbox" aria-checked="false"><span class="checkbox" aria-hidden="true"></span><span>Task done</span></button>
+    <p id="task-scoring-note" class="muted"></p><p id="task-detail-status" class="notice" role="status"></p>
+    <div class="actions"><button id="task-close" class="secondary" type="button">Close</button></div>
+  </dialog>
   <script>
     'use strict';
     const KEY = 'rhythm.v1';
     const PROJECTS = ['Greyhound', 'Career', 'Finance', 'Learning', 'Other'];
+    const BLOCKS = { block1: 'Block 1', block2: 'Block 2', bigBuild: 'Saturday Big Build' };
     const PULSE_FIELDS = {
       forward: 'What moved me forward today?',
       backwards: 'What could pull me backwards?',
@@ -270,7 +316,7 @@
       return {
         checks: items(key).map(() => false), block1: '', block1Project: '',
         block2: { task: '', project: '' }, bigBuild: { task: '', project: '' },
-        pulse: { forward: '', backwards: '', priority: '', anything: '' }, evBotNight: false
+        pulse: { forward: '', backwards: '', priority: '', anything: '' }, evBotNight: false, taskCards: {}
       };
     }
     function weekStart(key) { return shift(key, -((localDate(key).getDay() + 6) % 7)); }
@@ -319,11 +365,89 @@
       }
       return { streak, best, ticked, possible, percent: possible ? Math.round(ticked / possible * 100) : 0 };
     }
+    function taskText(day, block) { return block === 'block1' ? (day?.block1 || '') : (day?.[block]?.task || ''); }
+    function scoredCheck(key, block) {
+      if (block === 'block1' && items(key) === weekday) return 1;
+      if (block === 'bigBuild' && localDate(key).getDay() === 6) return 1;
+      return null;
+    }
+    function taskDone(day, key, block) {
+      const index = scoredCheck(key, block);
+      return index === null ? Boolean(day?.taskCards?.[block]?.completed) : Boolean(day?.checks[index]);
+    }
+    function stripMarkdown(text) {
+      return text.replace(/\*\*([\s\S]*?)\*\*/g, '$1').replace(/__([\s\S]*?)__/g, '$1')
+        .replace(/`([^`\n]+)`/g, '$1')
+        .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$|[.,:])/g, '$1$2').trim();
+    }
+    function resolveTaskDay(text, today) {
+      const value = stripMarkdown(text).replace(/\s+/g, ' ').trim();
+      const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const target = weekdays.findIndex(day => value.toLowerCase().replace(/\.$/, '') === day || value.toLowerCase().replace(/\.$/, '') === day.slice(0, 3));
+      if (target !== -1) return shift(today, (target - localDate(today).getDay() + 7) % 7);
+      let year, month, day, match;
+      if ((match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) [, year, month, day] = match;
+      else if ((match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) [, day, month, year] = match;
+      else {
+        const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        match = value.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\s+(\d{4})$/i);
+        if (match) {
+          day = match[1]; year = match[3];
+          month = months.findIndex(name => name === match[2].toLowerCase() || name.slice(0, 3) === match[2].toLowerCase()) + 1;
+        }
+      }
+      if (year && month && day) {
+        const key = `${year}-${String(Number(month)).padStart(2, '0')}-${String(Number(day)).padStart(2, '0')}`;
+        if (dateKey(localDate(key)) === key) return key;
+      }
+      throw new Error('Day must be a weekday or a valid date: YYYY-MM-DD, DD/MM/YYYY, or 26 October 2026.');
+    }
+    function matchBlock(text) {
+      const value = stripMarkdown(text).toLowerCase().replace(/[\s_-]+/g, '');
+      const aliases = { block1: 'block1', block2: 'block2', bigbuild: 'bigBuild', saturdaybigbuild: 'bigBuild' };
+      return Object.hasOwn(aliases, value) ? aliases[value] : '';
+    }
+    function parseTaskCard(text, today) {
+      const fields = {};
+      let current = '';
+      for (const raw of text.replace(/\r\n?/g, '\n').split('\n')) {
+        if (/^\s*```/.test(raw)) continue;
+        if (current === 'context') { fields.context += '\n' + stripMarkdown(raw); continue; }
+        const line = stripMarkdown(raw.replace(/^\s*(?:>\s*)*(?:[-+*]\s+|#{1,6}\s+)?/, ''));
+        const field = line.match(/^(day|block|task|done\s+when|time|context)\s*:\s*(.*)$/i);
+        if (field) {
+          current = field[1].toLowerCase().replace(/\s+/g, ' ');
+          if (Object.hasOwn(fields, current)) throw new Error(`${field[1]} appears more than once. Paste one task card at a time.`);
+          fields[current] = field[2].trim();
+        } else if (line && !/^rhythm\s+task$/i.test(line)) throw new Error('Use one labelled line per field. Extra lines belong under Context.');
+      }
+      if (!fields.day?.trim()) throw new Error('Day is missing. Add a weekday or date.');
+      if (!fields.task?.trim()) throw new Error('Task is missing. Add the one-line task.');
+      let time = fields.time?.trim() || '';
+      if (time) {
+        const minutes = time.match(/^(\d+(?:\.\d+)?)\s*(?:m|min(?:ute)?s?)?$/i);
+        if (!minutes || !Number.isFinite(Number(minutes[1])) || Number(minutes[1]) <= 0) throw new Error('Time must be a positive number of minutes, such as 75 minutes.');
+        time = `${Number(minutes[1])} minutes`;
+      }
+      return { key: resolveTaskDay(fields.day, today), block: matchBlock(fields.block || ''), blockName: fields.block || '',
+        task: fields.task.trim(), doneWhen: fields['done when'] || '', time, context: (fields.context || '').trim() };
+    }
+    function pastedDay(data, card) {
+      if (!Object.hasOwn(BLOCKS, card.block)) throw new Error('Choose an existing block.');
+      if (card.block === 'bigBuild' && localDate(card.key).getDay() !== 6) throw new Error('Saturday Big Build is available only on Saturdays. Choose another block or change Day.');
+      const source = data.days[card.key] || blank(card.key);
+      if (taskText(source, card.block).trim()) throw new Error(`${BLOCKS[card.block]} already has a task on ${dayLabel(card.key)}. Choose another block or change Day; the existing task will be kept.`);
+      const day = validateData({ days: { [card.key]: source } }).days[card.key];
+      if (card.block === 'block1') day.block1 = card.task;
+      else day[card.block].task = card.task;
+      day.taskCards[card.block] = { doneWhen: card.doneWhen, time: card.time, context: card.context, completed: false };
+      return day;
+    }
     function validateData(value) {
       const object = item => item !== null && typeof item === 'object' && !Array.isArray(item);
       if (!object(value) || Object.keys(value).length !== 1 || !object(value.days)) throw new Error('Expected a JSON object containing only "days".');
       const project = tag => typeof tag === 'string' && (tag === '' || PROJECTS.includes(tag));
-      const allowed = ['checks', 'block1', 'block1Project', 'block2', 'bigBuild', 'pulse', 'evBotNight'];
+      const allowed = ['checks', 'block1', 'block1Project', 'block2', 'bigBuild', 'pulse', 'evBotNight', 'taskCards'];
       const clean = { days: {} };
       for (const [key, day] of Object.entries(value.days)) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || dateKey(localDate(key)) !== key) throw new Error('Every day must have a valid YYYY-MM-DD date.');
@@ -359,6 +483,16 @@
           if (typeof day.evBotNight !== 'boolean') throw new Error('EV bot night must be true or false.');
           normalized.evBotNight = day.evBotNight;
         }
+        if (Object.hasOwn(day, 'taskCards')) {
+          if (!object(day.taskCards) || Object.keys(day.taskCards).some(block => !Object.hasOwn(BLOCKS, block))) throw new Error('Task details must belong to an existing block.');
+          for (const [block, details] of Object.entries(day.taskCards)) {
+            if (!object(details) || Object.keys(details).sort().join(',') !== 'completed,context,doneWhen,time' ||
+              ['doneWhen', 'time', 'context'].some(field => typeof details[field] !== 'string') || typeof details.completed !== 'boolean') {
+              throw new Error('Task details need Done when, Time and Context text, and a completion flag.');
+            }
+            normalized.taskCards[block] = { ...details };
+          }
+        }
         clean.days[key] = normalized;
       }
       return clean;
@@ -375,6 +509,7 @@
       }
     }
     let data = load(), today = dateKey(new Date()), selected = today, pendingImport = null, view = 'day';
+    let pendingTask = null, detailTask = null;
     function save() {
       try {
         if (!writable) throw new Error('Storage unavailable');
@@ -455,6 +590,58 @@
       }
       renderNights();
     }
+    function renderPlanned() {
+      $('planned-tasks').replaceChildren();
+      for (const key of Object.keys(data.days).sort()) {
+        if (key <= today) continue;
+        const day = data.days[key];
+        for (const block of Object.keys(day.taskCards)) {
+          const task = taskText(day, block);
+          if (!task.trim()) continue;
+          const row = document.createElement('li'), button = document.createElement('button'); button.type = 'button';
+          const label = document.createElement('strong'); label.textContent = `${dayLabel(key)} ${localDate(key).getFullYear()} · ${BLOCKS[block]}`;
+          const text = document.createElement('span'); text.textContent = task;
+          button.append(label, text); button.addEventListener('click', () => openTaskDetails(key, block));
+          row.append(button); $('planned-tasks').append(row);
+        }
+      }
+      $('planned-card').hidden = !$('planned-tasks').childElementCount;
+    }
+    function renderTaskDetails() {
+      if (!detailTask) return;
+      const { key, block } = detailTask, day = data.days[key];
+      $('task-detail-heading').textContent = BLOCKS[block];
+      $('task-detail-date').textContent = localDate(key).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      $('task-detail-text').textContent = taskText(day, block);
+      $('task-detail-info').replaceChildren();
+      for (const [field, label] of [['doneWhen', 'Done when'], ['time', 'Time'], ['context', 'Context']]) {
+        const value = day?.taskCards[block]?.[field];
+        if (!value) continue;
+        const title = document.createElement('dt'); title.textContent = label;
+        const content = document.createElement('dd'); content.textContent = value;
+        $('task-detail-info').append(title, content);
+      }
+      $('task-complete').disabled = key > today || !taskText(day, block).trim();
+      $('task-complete').setAttribute('aria-checked', String(taskDone(day, key, block)));
+      const index = scoredCheck(key, block);
+      $('task-scoring-note').textContent = key > today ? `Available to check off on ${dayLabel(key)}.` : index === null ? 'This block is unscored. Checking it off does not change your daily score.' : `Uses your existing controllable: ${items(key)[index]}.`;
+    }
+    function openTaskDetails(key, block) {
+      refreshDate(); detailTask = { key, block }; $('task-detail-status').textContent = '';
+      renderTaskDetails(); $('task-dialog').showModal();
+    }
+    function renderPastePreview() {
+      if (!pendingTask) return;
+      $('paste-preview-panel').hidden = false;
+      $('paste-date').textContent = localDate(pendingTask.key).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      $('paste-task-preview').textContent = pendingTask.task;
+      $('paste-block').value = pendingTask.block;
+      $('paste-block-note').textContent = !matchBlock(pendingTask.blockName) ? (pendingTask.blockName ? `“${pendingTask.blockName}” is not an existing block name. Choose a block above.` : 'Choose the block for this task.') : '';
+      $('paste-confirm').disabled = true; $('paste-conflict').textContent = '';
+      if (!pendingTask.block) return;
+      try { pastedDay(data, pendingTask); $('paste-confirm').disabled = false; }
+      catch (error) { $('paste-conflict').textContent = error.message; }
+    }
     function renderDay() {
       const date = localDate(selected), day = data.days[selected] || blank(selected);
       $('block-heading').textContent = selected === today ? "Today's Block 1" : 'Block 1 for this day';
@@ -471,6 +658,9 @@
       $('countdown').textContent = left === 0 ? 'Decision day' : `${left} ${left === 1 ? 'day' : 'days'} to decision`;
       $('block1').textContent = day.block1 || "Not set — set it at tonight's shutdown.";
       $('block1').className = day.block1 ? '' : 'empty';
+      $('block1-open').disabled = !day.block1.trim();
+      $('block2-details').hidden = !day.taskCards.block2 || !day.block2.task.trim();
+      $('big-build-details').hidden = !day.taskCards.bigBuild || !day.bigBuild.task.trim();
       $('block1-project').value = day.block1Project;
       $('block2-task').value = day.block2.task; $('block2-project').value = day.block2.project;
       $('big-build-task').value = day.bigBuild.task; $('big-build-project').value = day.bigBuild.project;
@@ -501,7 +691,8 @@
       $('task-input').value = data.days[shift(today, 1)]?.block1 || '';
       $('tomorrow-project').value = data.days[shift(today, 1)]?.block1Project || '';
       $('task-status').textContent = '';
-      renderScore(); renderStats(); renderReview();
+      renderScore(); renderStats(); renderReview(); renderPlanned();
+      if ($('task-dialog').open) renderTaskDetails();
     }
     function refreshDate() {
       const now = dateKey(new Date());
@@ -509,6 +700,74 @@
       if (selected === today || selected > now) selected = now;
       today = now; renderDay(); return true;
     }
+    $('paste-task').addEventListener('click', () => {
+      pendingTask = null; $('paste-text').value = ''; $('paste-error').textContent = '';
+      $('paste-preview-panel').hidden = true; $('paste-form').hidden = false; $('paste-status').textContent = '';
+      $('paste-dialog').showModal(); $('paste-text').focus();
+    });
+    for (const id of ['paste-cancel', 'paste-preview-cancel']) $(id).addEventListener('click', () => $('paste-dialog').close());
+    $('paste-dialog').addEventListener('close', () => { pendingTask = null; });
+    $('paste-text').addEventListener('input', () => {
+      pendingTask = null; $('paste-preview-panel').hidden = true; $('paste-error').textContent = '';
+    });
+    $('paste-edit').addEventListener('click', () => {
+      pendingTask = null; $('paste-preview-panel').hidden = true; $('paste-form').hidden = false;
+      $('paste-error').textContent = ''; $('paste-text').focus();
+    });
+    $('paste-form').addEventListener('submit', event => {
+      event.preventDefault(); $('paste-error').textContent = '';
+      try {
+        pendingTask = parseTaskCard($('paste-text').value, dateKey(new Date()));
+        $('paste-form').hidden = true;
+        renderPastePreview();
+        if ($('paste-confirm').disabled) $('paste-block').focus(); else $('paste-confirm').focus();
+      } catch (error) {
+        pendingTask = null; $('paste-preview-panel').hidden = true; $('paste-error').textContent = error.message;
+      }
+    });
+    $('paste-block').addEventListener('change', () => {
+      if (!pendingTask) return;
+      pendingTask.block = $('paste-block').value; renderPastePreview();
+    });
+    $('paste-confirm').addEventListener('click', () => {
+      if (!pendingTask) return;
+      $('paste-error').textContent = '';
+      try {
+        const resolved = parseTaskCard($('paste-text').value, dateKey(new Date()));
+        if (resolved.key !== pendingTask.key) {
+          pendingTask = { ...resolved, block: pendingTask.block }; renderPastePreview();
+          $('paste-error').textContent = 'The local date changed. Review the updated date and confirm again.'; return;
+        }
+        const { key, block } = pendingTask, previous = data.days[key];
+        data.days[key] = pastedDay(data, pendingTask);
+        if (!save()) {
+          if (previous) data.days[key] = previous; else delete data.days[key];
+          $('paste-error').textContent = 'The task could not be saved in this browser. Nothing was changed. Keep your card and try again when storage is available.'; return;
+        }
+        refreshDate();
+        if (key <= today) { selected = key; view = 'day'; }
+        $('paste-dialog').close(); renderDay();
+        $('paste-status').textContent = `Saved once for ${dayLabel(key)} ${localDate(key).getFullYear()} · ${BLOCKS[block]}. Tap the task to view its details.`;
+      } catch (error) { $('paste-error').textContent = error.message; renderPastePreview(); }
+    });
+    $('block1-open').addEventListener('click', () => openTaskDetails(selected, 'block1'));
+    $('block2-details').addEventListener('click', () => openTaskDetails(selected, 'block2'));
+    $('big-build-details').addEventListener('click', () => openTaskDetails(selected, 'bigBuild'));
+    $('task-close').addEventListener('click', () => $('task-dialog').close());
+    $('task-complete').addEventListener('click', () => {
+      refreshDate();
+      if (!detailTask || detailTask.key > today) return;
+      const { key, block } = detailTask, day = data.days[key];
+      if (!taskText(day, block).trim()) return;
+      const index = scoredCheck(key, block);
+      if (index !== null) day.checks[index] = !day.checks[index];
+      else {
+        if (!day.taskCards[block]) day.taskCards[block] = { doneWhen: '', time: '', context: '', completed: false };
+        day.taskCards[block].completed = !day.taskCards[block].completed;
+      }
+      const persisted = save(); renderDay();
+      $('task-detail-status').textContent = persisted ? 'Saved on this device.' : 'Kept in this tab. Export a backup before closing.';
+    });
     $('previous').addEventListener('click', () => { refreshDate(); selected = shift(selected, view === 'week' ? -7 : -1); renderDay(); });
     $('next').addEventListener('click', () => {
       refreshDate();
@@ -524,6 +783,7 @@
       event.preventDefault();
       if (refreshDate() || selected !== today) return;
       const task = $('task-input').value.trim();
+      if (ensure(shift(today, 1)).block1 !== task) delete ensure(shift(today, 1)).taskCards.block1;
       ensure(today); ensure(shift(today, 1)).block1 = task;
       ensure(shift(today, 1)).block1Project = $('tomorrow-project').value;
       if (items(today) === weekday && task) ensure(today).checks[5] = true;
@@ -545,7 +805,11 @@
       ['big-build-task', 'bigBuild', 'task'], ['big-build-project', 'bigBuild', 'project']
     ]) {
       $(id).addEventListener(field === 'task' ? 'input' : 'change', () => {
-        autosaveDay(day => { day[block][field] = $(id).value; }, 'blocks-status');
+        autosaveDay(day => {
+          if (field === 'task' && day[block].task !== $(id).value) delete day.taskCards[block];
+          day[block][field] = $(id).value;
+          if (field === 'task') $(`${block === 'block2' ? 'block2' : 'big-build'}-details`).hidden = !day.taskCards[block];
+        }, 'blocks-status');
       });
     }
     for (const field of Object.keys(PULSE_FIELDS)) {
@@ -586,8 +850,8 @@
     $('validate').addEventListener('click', () => {
       try {
         pendingImport = validateData(JSON.parse($('backup-text').value));
-        if (Object.entries(pendingImport.days).some(([key, day]) => key > dateKey(new Date()) && (day.checks.some(Boolean) || day.evBotNight))) {
-          throw new Error('Future dates cannot contain completed checks or logged nights.');
+        if (Object.entries(pendingImport.days).some(([key, day]) => key > dateKey(new Date()) && (day.checks.some(Boolean) || day.evBotNight || Object.values(day.taskCards).some(task => task.completed)))) {
+          throw new Error('Future dates cannot contain completed checks, completed tasks or logged nights.');
         }
         $('import-status').textContent = `Valid backup: ${Object.keys(pendingImport.days).length} saved days. Replace all current data? This cannot be undone. Export first if you need a copy.`;
         $('backup-text').readOnly = true; $('validate').hidden = true; $('replace').hidden = false; $('replace').focus();

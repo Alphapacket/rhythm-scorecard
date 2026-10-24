@@ -11,7 +11,8 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const boundary = script.indexOf('    let writable = true;');
 assert(boundary > 0, 'The pure data helpers must precede browser storage setup.');
 const api = vm.runInNewContext(`${script.slice(0, boundary)}
-  ({ blank, validateData, stats, score, won, weeklySummary, weekStart, shift, serial });`);
+  ({ blank, validateData, stats, score, won, weeklySummary, weekStart, shift, serial,
+     parseTaskCard, resolveTaskDay, matchBlock, pastedDay, taskDone, scoredCheck });`);
 const plain = value => JSON.parse(JSON.stringify(value));
 const win = key => { const day = api.blank(key); day.checks.fill(true); return day; };
 
@@ -34,6 +35,7 @@ test('legacy records migrate without changing checks, text, or the input object'
     assert.deepEqual(plain(migrated.days[key].bigBuild), { task: '', project: '' });
     assert.deepEqual(plain(migrated.days[key].pulse), { forward: '', backwards: '', priority: '', anything: '' });
     assert.equal(migrated.days[key].evBotNight, false);
+    assert.deepEqual(plain(migrated.days[key].taskCards), {});
   }
   assert.equal(JSON.stringify(legacy), original);
   assert.deepEqual(plain(api.stats(migrated, '2026-10-24')), plain(api.stats(legacy, '2026-10-24')));
@@ -111,4 +113,77 @@ test('local week boundaries and Sydney daylight saving use calendar dates', () =
   assert.equal(api.shift('2026-10-03', 1), '2026-10-04');
   assert.equal(api.shift('2026-10-04', 1), '2026-10-05');
   assert.equal(api.serial('2026-10-05') - api.serial('2026-10-03'), 2);
+});
+
+test('task cards accept case, Markdown, whitespace, and multiline Context', () => {
+  const card = api.parseTaskCard('```text\n# RHYTHM TASK\n- **dAy:** **mOnDay**\n**BLOCK** : bLoCk   1\n_Task:_ Write a short checklist.\n**Done   when:** Every item has a clear next action.\nTIME: 75 MINUTES\nContext: Open REPORT_CHECK_20.xlsx.\n  Keep the original file names.\n\nSecond paragraph.\n```', '2026-10-24');
+  assert.deepEqual(plain(card), {
+    key: '2026-10-26', block: 'block1', blockName: 'bLoCk   1', task: 'Write a short checklist.',
+    doneWhen: 'Every item has a clear next action.', time: '75 minutes',
+    context: 'Open REPORT_CHECK_20.xlsx.\nKeep the original file names.\n\nSecond paragraph.'
+  });
+});
+
+test('weekdays resolve once from the local date, including today, with explicit date support', () => {
+  assert.equal(api.resolveTaskDay('Monday', '2026-10-24'), '2026-10-26');
+  assert.equal(api.resolveTaskDay('Monday', '2026-10-26'), '2026-10-26');
+  assert.equal(api.resolveTaskDay('Mon', '2026-10-27'), '2026-11-02');
+  assert.equal(api.resolveTaskDay('Monday', '2026-12-31'), '2027-01-04');
+  for (const value of ['2026-10-26', '26/10/2026', '26 October 2026', '26th Oct 2026']) {
+    assert.equal(api.resolveTaskDay(value, '2026-10-24'), '2026-10-26');
+  }
+  assert.throws(() => api.resolveTaskDay('2026-02-30', '2026-10-24'));
+  assert.throws(() => api.resolveTaskDay('32/10/2026', '2026-10-24'));
+});
+
+test('Context continuations can contain words that look like field labels', () => {
+  const card = api.parseTaskCard('Day: Monday\nTask: Write a plan\nContext: Keep these notes.\nTime: a reminder, not a duration\nTask: quoted example', '2026-10-24');
+  assert.equal(card.task, 'Write a plan'); assert.equal(card.time, '');
+  assert.equal(card.context, 'Keep these notes.\nTime: a reminder, not a duration\nTask: quoted example');
+});
+
+test('missing required fields fail clearly; unmatched blocks remain available for a picker', () => {
+  assert.throws(() => api.parseTaskCard('Task: Make a draft', '2026-10-24'), /Day is missing/);
+  assert.throws(() => api.parseTaskCard('Day: Monday\nTask: ** **', '2026-10-24'), /Task is missing/);
+  assert.throws(() => api.parseTaskCard('Day: Monday\nTask: Draft\nTime: soon', '2026-10-24'), /positive number of minutes/);
+  assert.throws(() => api.parseTaskCard('Day: Monday\nTask: Draft\nTask: Other', '2026-10-24'), /more than once/);
+  assert.equal(api.parseTaskCard('Day: Monday\nBlock: Morning\nTask: Draft', '2026-10-24').block, '');
+  assert.equal(api.matchBlock('SATURDAY BIG BUILD'), 'bigBuild');
+  assert.equal(api.matchBlock('block 2'), 'block2');
+  assert.equal(api.matchBlock('constructor'), '');
+});
+
+test('pasting only fills an empty existing block and preserves all other data and checks', () => {
+  const day = api.blank('2026-10-26'); day.block2 = { task: 'Keep this task', project: 'Learning' };
+  day.pulse.forward = 'Keep this note'; day.checks[0] = true; day.block1Project = 'Career';
+  const data = { days: { '2026-10-26': day } }, original = JSON.stringify(data);
+  const card = api.parseTaskCard('Day: Monday\nBlock: Block 1\nTask: Write a checklist\nDone when: Five actions written\nTime: 60\nContext: One clear output', '2026-10-24');
+  const updated = api.pastedDay(data, card);
+  assert.equal(JSON.stringify(data), original);
+  assert.equal(updated.block1, 'Write a checklist');
+  assert.equal(updated.block1Project, 'Career');
+  assert.deepEqual(plain(updated.block2), plain(day.block2));
+  assert.deepEqual(plain(updated.checks), plain(day.checks));
+  assert.deepEqual(plain(updated.pulse), plain(day.pulse));
+  assert.deepEqual(plain(updated.taskCards.block1), { doneWhen: 'Five actions written', time: '60 minutes', context: 'One clear output', completed: false });
+  assert.deepEqual(plain(api.validateData({ days: { '2026-10-26': updated } }).days['2026-10-26']), plain(updated));
+  assert.throws(() => api.pastedDay({ days: { '2026-10-26': updated } }, card), /already has a task/);
+  assert.throws(() => api.pastedDay(data, { ...plain(card), block: 'bigBuild' }), /only on Saturdays/);
+});
+
+test('task completion uses existing scored checks, with no points for an unscored block', () => {
+  const card = api.parseTaskCard('Day: Monday\nBlock: Block 1\nTask: Draft one page', '2026-10-24');
+  const day = api.pastedDay({ days: {} }, card), data = { days: { [card.key]: day } };
+  assert.equal(api.scoredCheck(card.key, 'block1'), 1);
+  assert.equal(api.taskDone(day, card.key, 'block1'), false);
+  day.checks[1] = true;
+  assert.equal(api.taskDone(day, card.key, 'block1'), true);
+  assert.equal(api.score(data, card.key), 1);
+  const before = plain(api.stats(data, card.key));
+  day.taskCards.block2 = { doneWhen: '', time: '', context: '', completed: true };
+  assert.equal(api.scoredCheck(card.key, 'block2'), null);
+  assert.equal(api.taskDone(day, card.key, 'block2'), true);
+  assert.deepEqual(plain(api.stats(data, card.key)), before);
+  assert.equal(api.scoredCheck('2026-10-24', 'bigBuild'), 1);
+  assert.equal(api.scoredCheck('2026-10-25', 'block1'), null);
 });
