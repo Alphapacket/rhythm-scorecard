@@ -11,7 +11,7 @@ const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const boundary = script.indexOf('    let writable = true;');
 assert(boundary > 0, 'The pure data helpers must precede browser storage setup.');
 const api = vm.runInNewContext(`${script.slice(0, boundary)}
-  ({ blank, validateData, stats, score, won, weeklySummary, weekStart, shift, serial,
+  ({ blank, items, validateData, stats, score, won, weeklySummary, weekStart, shift, serial,
      parseTaskCard, resolveTaskDay, matchBlock, pastedDay, taskDone, scoredCheck });`);
 const plain = value => JSON.parse(JSON.stringify(value));
 const win = key => { const day = api.blank(key); day.checks.fill(true); return day; };
@@ -33,7 +33,7 @@ test('legacy records migrate without changing checks, text, or the input object'
     assert.equal(migrated.days[key].block1Project, '');
     assert.deepEqual(plain(migrated.days[key].block2), { task: '', project: '' });
     assert.deepEqual(plain(migrated.days[key].bigBuild), { task: '', project: '' });
-    assert.deepEqual(plain(migrated.days[key].pulse), { forward: '', backwards: '', priority: '', anything: '' });
+    assert.deepEqual(plain(migrated.days[key].pulse), { learned: '', problem: '', forward: '', backwards: '', priority: '', anything: '' });
     assert.equal(migrated.days[key].evBotNight, false);
     assert.deepEqual(plain(migrated.days[key].taskCards), {});
   }
@@ -42,13 +42,15 @@ test('legacy records migrate without changing checks, text, or the input object'
 });
 
 test('new backups preserve every optional field through export and import', () => {
-  const day = api.blank('2026-10-24');
+  const day = api.blank('2026-11-14');
+  day.checks[6] = true;
   day.block1 = 'Write a short plan'; day.block1Project = 'Career';
   day.block2 = { task: 'Read a chapter', project: 'Learning' };
   day.bigBuild = { task: 'Make a prototype', project: 'Other' };
-  day.pulse = { forward: 'Made a draft', backwards: 'Distractions', priority: 'Finish one page', anything: 'Line one.\nLine two. <b>Literal text</b>' };
+  day.pulse = { learned: 'Write the test first', problem: 'Manual intake slows the support team',
+    forward: 'Made a draft', backwards: 'Distractions', priority: 'Finish one page', anything: 'Line one.\nLine two. <b>Literal text</b>' };
   day.evBotNight = true;
-  const backup = { days: { '2026-10-24': day } };
+  const backup = { days: { '2026-11-14': day } };
   assert.deepEqual(plain(api.validateData(JSON.parse(JSON.stringify(backup)))), plain(backup));
 });
 
@@ -56,6 +58,7 @@ test('invalid optional fields, dates, and checks are rejected instead of discard
   const check = day => api.validateData({ days: { '2026-10-24': day } });
   for (const field of [
     { block1Project: 'Unknown' }, { evBotNight: 1 }, { pulse: { forward: 'Incomplete' } },
+    { pulse: { ...plain(api.blank('2026-10-24').pulse), learned: 123 } },
     { block2: { task: '', project: null } }, { extraField: 'Do not silently discard' }
   ]) assert.throws(() => check({ ...plain(api.blank('2026-10-24')), ...field }));
   assert.throws(() => check({ checks: [true], block1: '' }));
@@ -67,7 +70,7 @@ test('notes, tags, tasks, and nights never alter checks or streak calculations',
   const before = plain(api.stats(data, '2026-10-21'));
   const checks = plain(data.days['2026-10-20'].checks);
   Object.assign(data.days['2026-10-20'], {
-    pulse: { forward: 'Progress', backwards: '', priority: '', anything: '' },
+    pulse: { ...data.days['2026-10-20'].pulse, learned: 'One note', problem: 'Who has it', forward: 'Progress' },
     block1Project: 'Greyhound', block2: { task: 'Read', project: 'Learning' }, evBotNight: true
   });
   assert.deepEqual(plain(api.stats(data, '2026-10-21')), before);
@@ -82,14 +85,56 @@ test('week percentages count elapsed days only and streaks still cross gaps corr
   assert.deepEqual(plain(api.stats(data, '2026-10-25')), { streak: 2, best: 3, ticked: 29, possible: 40, percent: 73 });
 });
 
+test('legacy scores and the seven-check checklist use their own denominators in a mixed week', () => {
+  const data = api.validateData({ days: {
+    '2026-11-09': { checks: [true, true, true, true, true, false], block1: 'Monday task' },
+    '2026-11-10': { checks: [true, true, true, true, true, false], block1: 'Tuesday task' }
+  } });
+  const wednesday = '2026-11-11';
+  data.days[wednesday] = api.blank(wednesday);
+  data.days[wednesday].checks.fill(true, 0, 5);
+  assert.equal(api.won(data, '2026-11-10'), true);
+  assert.equal(api.won(data, wednesday), false);
+  assert.deepEqual(plain(api.stats(data, wednesday)), { streak: 2, best: 2, ticked: 15, possible: 19, percent: 79 });
+  data.days[wednesday].checks[5] = true;
+  assert.equal(api.won(data, wednesday), true);
+  for (const key of [wednesday, '2026-11-14', '2026-11-15']) assert.equal(api.blank(key).checks.length, 7);
+  data.days['2026-11-10'].checks.fill(false);
+  const reloaded = api.validateData(plain(data));
+  assert.equal(api.items('2026-11-10', reloaded.days['2026-11-10']).length, 6);
+});
+
+test('preplanned legacy days get seven unchecked items without losing tasks, completion or notes', () => {
+  const key = '2026-11-14';
+  const day = {
+    checks: [false, false, false, false, false], block1: 'Prep', block1Project: 'Career',
+    bigBuild: { task: 'Build', project: 'Greyhound' },
+    taskCards: { bigBuild: { doneWhen: 'Draft ready', time: '60 minutes', context: 'Keep me', completed: false } },
+    pulse: { forward: 'Progress', backwards: '', priority: '', anything: 'Keep this nightly summary.' }
+  };
+  const updated = api.validateData({ days: { [key]: day } }).days[key];
+  assert.deepEqual(plain(updated.checks), Array(7).fill(false));
+  assert.equal(api.scoredCheck(key, 'bigBuild', updated), null);
+  assert.deepEqual(plain(updated.taskCards), day.taskCards);
+  assert.deepEqual(plain(updated.bigBuild), day.bigBuild);
+  assert.equal(updated.block1, day.block1);
+  assert.equal(updated.block1Project, day.block1Project);
+  assert.deepEqual(plain(updated.pulse), { ...day.pulse, learned: '', problem: '' });
+  updated.taskCards.bigBuild.completed = true;
+  assert.equal(api.taskDone(updated, key, 'bigBuild'), true);
+  assert.equal(api.score({ days: { [key]: updated } }, key), 0);
+});
+
 test('weekly review counts one tagged task per block, skips empty notes and future days', () => {
   const data = { days: {} };
-  for (const key of ['2026-10-19', '2026-10-20', '2026-10-24', '2026-10-25', '2026-10-26']) data.days[key] = api.blank(key);
+  for (const key of ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-24', '2026-10-25', '2026-10-26']) data.days[key] = api.blank(key);
   const monday = data.days['2026-10-19'], saturday = data.days['2026-10-24'];
   monday.block1 = 'Draft'; monday.block1Project = 'Greyhound';
   monday.block2 = { task: 'Read', project: 'Learning' };
   monday.bigBuild = { task: 'Not a Saturday block', project: 'Finance' };
   monday.pulse.forward = 'Finished a draft'; monday.evBotNight = true;
+  data.days['2026-10-21'].pulse.learned = 'Ask before assuming';
+  data.days['2026-10-22'].pulse.problem = 'Double entry for operations';
   data.days['2026-10-20'].block1Project = 'Career';
   data.days['2026-10-20'].pulse.anything = ' \n ';
   saturday.block1 = 'Review'; saturday.block1Project = 'Greyhound';
@@ -102,7 +147,7 @@ test('weekly review counts one tagged task per block, skips empty notes and futu
   }
   const summary = api.weeklySummary(data, '2026-10-24', '2026-10-24');
   assert.deepEqual(plain(summary.counts), { Greyhound: 2, Career: 0, Finance: 0, Learning: 1, Other: 1 });
-  assert.deepEqual(plain(summary.notes.map(note => note.key)), ['2026-10-19', '2026-10-24']);
+  assert.deepEqual(plain(summary.notes.map(note => note.key)), ['2026-10-19', '2026-10-21', '2026-10-22', '2026-10-24']);
   assert.deepEqual(plain(summary.nights), ['2026-10-19', '2026-10-24']);
   assert.equal(api.weeklySummary(data, '2026-10-26', '2026-10-26').counts.Finance, 1);
 });

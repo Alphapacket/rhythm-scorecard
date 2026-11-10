@@ -62,7 +62,7 @@
     .score strong { font-size: 22px; }
     .checks-card { padding-bottom: 8px; }
     #checks { margin: 16px -10px 0; }
-    .check-row { display: flex; align-items: center; gap: 13px; width: 100%; min-height: 64px; text-align: left; color: var(--text); background: var(--card); border: 0; border-top: 1px solid var(--border); padding: 13px 10px; font-size: 14px; line-height: 1.5; }
+    .check-row { display: flex; align-items: center; gap: 13px; width: 100%; min-height: 52px; text-align: left; color: var(--text); background: var(--card); border: 0; border-top: 1px solid var(--border); padding: 10px; font-size: 14px; line-height: 1.5; }
     .check-row[aria-checked="true"] { background: var(--done); }
     .checkbox { flex: 0 0 24px; height: 24px; border: 2px solid var(--bar); border-radius: 7px; display: grid; place-items: center; }
     .checkbox::after { content: ""; width: 7px; height: 12px; border: solid var(--white); border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg); opacity: 0; }
@@ -104,7 +104,7 @@
     summary { min-height: 52px; padding: 12px 0; cursor: pointer; font-weight: 700; }
     details.card { padding-top: 8px; padding-bottom: 8px; }
     details[open].card { padding-bottom: 22px; }
-    .pulse-text { min-height: 120px; margin-top: 0; }
+    .pulse-text { min-height: 86px; margin-top: 0; }
     .night-button { width: 100%; min-height: 72px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: left; background: var(--soft); color: var(--text); }
     .night-button strong, .night-button span { display: block; }
     .night-button span { font-size: 12px; margin-top: 4px; }
@@ -156,8 +156,27 @@
     <noscript><p class="card">Enable JavaScript to use this on-device scorecard.</p></noscript>
     <p id="storage-note" class="notice" role="status"></p>
     <div class="view-switch" role="group" aria-label="Scorecard view">
-      <button id="daily-tab" class="secondary" type="button" aria-pressed="true" aria-controls="daily-view">Daily</button>
+      <button id="daily-tab" class="secondary" type="button" aria-pressed="true" aria-controls="daily-scorecard daily-view">Daily</button>
       <button id="review-tab" class="secondary" type="button" aria-pressed="false" aria-controls="review-view">Weekly Review</button>
+    </div>
+    <div id="daily-scorecard">
+    <section class="card checks-card" aria-labelledby="checks-heading">
+      <div class="card-heading"><h2 id="checks-heading" class="eyebrow">Controllables</h2><span id="score" class="score" aria-live="polite"></span></div>
+      <p id="checks-description" class="muted"></p><div id="checks"></div>
+    </section>
+    <section class="card" aria-labelledby="notes-title">
+      <h2 id="notes-title">Daily notes <span class="muted">(optional)</span></h2>
+      <div class="field"><label for="pulse-learned">Learned today</label><input id="pulse-learned" type="text" autocomplete="off" placeholder="One takeaway"></div>
+      <div class="field"><label for="pulse-problem">Problem logged</label><input id="pulse-problem" type="text" autocomplete="off" placeholder="Problem and who has it"></div>
+      <div class="field"><label for="pulse-anything">Nightly summary</label><textarea id="pulse-anything" class="pulse-text" rows="2" placeholder="What happened, what got done or didn't"></textarea></div>
+      <details id="pulse-card">
+        <summary>More Daily Pulse prompts</summary>
+        <div class="field"><label for="pulse-forward">What moved me forward today?</label><input id="pulse-forward" type="text" autocomplete="off"></div>
+        <div class="field"><label for="pulse-backwards">What could pull me backwards?</label><input id="pulse-backwards" type="text" autocomplete="off"></div>
+        <div class="field"><label for="pulse-priority">One priority for tomorrow</label><input id="pulse-priority" type="text" autocomplete="off"></div>
+      </details>
+      <p id="pulse-status" class="notice" role="status">Autosaves on this device.</p>
+    </section>
     </div>
     <button id="paste-task" class="secondary paste-launch" type="button">Paste task</button>
     <p id="paste-status" class="notice" role="status"></p>
@@ -180,10 +199,6 @@
       </div>
       <p id="blocks-status" class="notice" role="status">Autosaves on this device.</p>
     </details>
-    <section class="card checks-card" aria-labelledby="checks-heading">
-      <div class="card-heading"><h2 id="checks-heading" class="eyebrow">Controllables</h2><span id="score" class="score" aria-live="polite"></span></div>
-      <p class="muted">The only things you're scored on today.</p><div id="checks"></div>
-    </section>
     <section id="tomorrow-card" class="card" aria-labelledby="tomorrow-heading">
       <h2 id="tomorrow-heading"><label for="task-input">Tomorrow's Block 1 task</label></h2>
       <p class="muted">One clear task. Make tomorrow easy to start.</p>
@@ -191,15 +206,6 @@
       <div class="field"><label for="tomorrow-project">Tomorrow's project tag (optional)</label><select id="tomorrow-project" data-project-select></select></div>
       <p id="task-status" class="notice" role="status"></p>
     </section>
-    <details id="pulse-card" class="card">
-      <summary>Nightly note / Daily Pulse</summary>
-      <p class="muted">All optional. Your notes do not change your score or streak.</p>
-      <div class="field"><label for="pulse-forward">What moved me forward today?</label><input id="pulse-forward" type="text" autocomplete="off"></div>
-      <div class="field"><label for="pulse-backwards">What could pull me backwards?</label><input id="pulse-backwards" type="text" autocomplete="off"></div>
-      <div class="field"><label for="pulse-priority">One priority for tomorrow</label><input id="pulse-priority" type="text" autocomplete="off"></div>
-      <div class="field"><label for="pulse-anything">Anything else — what happened, what didn't get done and why.</label><textarea id="pulse-anything" class="pulse-text" rows="4"></textarea></div>
-      <p id="pulse-status" class="notice" role="status">Autosaves on this device.</p>
-    </details>
     <section class="card" aria-label="Weekly EV bot night limit">
       <button id="ev-night" class="night-button" type="button" aria-pressed="false"><strong id="ev-count">EV bot nights: 0/1</strong><span id="ev-action"></span></button>
       <p id="ev-range" class="muted"></p><p class="muted">One night per week. Tap again to undo. Separate from your score.</p>
@@ -269,14 +275,26 @@
   <script>
     'use strict';
     const KEY = 'rhythm.v1';
+    const RHYTHM_START = '2026-11-10';
     const PROJECTS = ['Greyhound', 'Career', 'Finance', 'Learning', 'Other'];
     const BLOCKS = { block1: 'Block 1', block2: 'Block 2', bigBuild: 'Saturday Big Build' };
-    const PULSE_FIELDS = {
+    const ORIGINAL_PROMPTS = {
       forward: 'What moved me forward today?',
       backwards: 'What could pull me backwards?',
-      priority: 'One priority for tomorrow',
-      anything: "Anything else — what happened, what didn't get done and why."
+      priority: 'One priority for tomorrow'
     };
+    const PULSE_FIELDS = {
+      learned: 'Learned today', problem: 'Problem logged', anything: 'Nightly summary', ...ORIGINAL_PROMPTS
+    };
+    const rhythm = [
+      'Deep Work (7:15–8:15am block done)',
+      'Learning (audiobook/podcast + one note)',
+      'Problem Logged (one people-problem captured)',
+      'Gym',
+      'Money Clean (no unplanned spend)',
+      'Edge Work (GREYHOUND-LAB or promo log work)',
+      'Sleep (7.5+ hours)'
+    ];
     const weekday = [
       'Up at 6:30am, lights out at 10:30pm',
       'Block 1 done, with something to show for it',
@@ -308,15 +326,19 @@
       const date = localDate(key);
       return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
     }
-    function items(key) {
+    function legacyItems(key) {
       const day = localDate(key).getDay();
       return day === 0 ? sunday : day === 6 ? saturday : weekday;
+    }
+    function items(key, day) {
+      const current = day ? day.checks.length === rhythm.length : key >= RHYTHM_START;
+      return current ? rhythm : legacyItems(key);
     }
     function blank(key) {
       return {
         checks: items(key).map(() => false), block1: '', block1Project: '',
         block2: { task: '', project: '' }, bigBuild: { task: '', project: '' },
-        pulse: { forward: '', backwards: '', priority: '', anything: '' }, evBotNight: false, taskCards: {}
+        pulse: Object.fromEntries(Object.keys(PULSE_FIELDS).map(field => [field, ''])), evBotNight: false, taskCards: {}
       };
     }
     function weekStart(key) { return shift(key, -((localDate(key).getDay() + 6) % 7)); }
@@ -341,7 +363,7 @@
       return { counts, notes, nights };
     }
     function score(data, key) { return (data.days[key]?.checks || []).filter(Boolean).length; }
-    function won(data, key) { return score(data, key) / items(key).length >= .8; }
+    function won(data, key) { return score(data, key) / items(key, data.days[key]).length >= .8; }
     function stats(data, today) {
       const saved = Object.keys(data.days).filter(key => key <= today).sort();
       const first = saved[0];
@@ -359,20 +381,21 @@
       for (let i = 0; i < 7; i++) {
         const key = shift(monday, i);
         if (first && key >= first && key <= today) {
-          possible += items(key).length;
-          if (key <= today) ticked += score(data, key);
+          possible += items(key, data.days[key]).length;
+          ticked += score(data, key);
         }
       }
       return { streak, best, ticked, possible, percent: possible ? Math.round(ticked / possible * 100) : 0 };
     }
     function taskText(day, block) { return block === 'block1' ? (day?.block1 || '') : (day?.[block]?.task || ''); }
-    function scoredCheck(key, block) {
-      if (block === 'block1' && items(key) === weekday) return 1;
-      if (block === 'bigBuild' && localDate(key).getDay() === 6) return 1;
+    function scoredCheck(key, block, day) {
+      const checklist = items(key, day);
+      if (block === 'block1' && checklist === weekday) return 1;
+      if (block === 'bigBuild' && checklist === saturday) return 1;
       return null;
     }
     function taskDone(day, key, block) {
-      const index = scoredCheck(key, block);
+      const index = scoredCheck(key, block, day);
       return index === null ? Boolean(day?.taskCards?.[block]?.completed) : Boolean(day?.checks[index]);
     }
     function stripMarkdown(text) {
@@ -448,18 +471,22 @@
       if (!object(value) || Object.keys(value).length !== 1 || !object(value.days)) throw new Error('Expected a JSON object containing only "days".');
       const project = tag => typeof tag === 'string' && (tag === '' || PROJECTS.includes(tag));
       const allowed = ['checks', 'block1', 'block1Project', 'block2', 'bigBuild', 'pulse', 'evBotNight', 'taskCards'];
+      const requiredPulseFields = [...Object.keys(ORIGINAL_PROMPTS), 'anything'];
       const clean = { days: {} };
       for (const [key, day] of Object.entries(value.days)) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || dateKey(localDate(key)) !== key) throw new Error('Every day must have a valid YYYY-MM-DD date.');
         if (!object(day) || Object.keys(day).some(field => !allowed.includes(field)) ||
           typeof day.block1 !== 'string' || !Array.isArray(day.checks) ||
-          day.checks.length !== items(key).length || day.checks.some(check => typeof check !== 'boolean')) {
-          throw new Error('Each day needs a block1 string and exactly 6 weekday or 5 weekend boolean checks.');
+          ![legacyItems(key).length, rhythm.length].includes(day.checks.length) || day.checks.some(check => typeof check !== 'boolean')) {
+          throw new Error('Each day needs a block1 string and either 7 boolean checks or the original checklist for that date.');
         }
-        // Older backups contain only checks and block1. Add defaults in memory;
-        // loading never writes over the stored copy. Persist only after an edit.
+        // Upgrade unchecked pre-release records from the start date, such as
+        // preplanned tasks. Keep the checklist of records already saved by this app.
+        // Loading only normalizes in memory. Persist after an edit or explicit import.
         const normalized = blank(key);
-        normalized.checks = [...day.checks]; normalized.block1 = day.block1;
+        const alreadyNormalized = Object.hasOwn(day.pulse ?? {}, 'learned');
+        if (key < RHYTHM_START || day.checks.some(Boolean) || alreadyNormalized) normalized.checks = [...day.checks];
+        normalized.block1 = day.block1;
         if (Object.hasOwn(day, 'block1Project')) {
           if (!project(day.block1Project)) throw new Error('Unknown Block 1 project tag.');
           normalized.block1Project = day.block1Project;
@@ -473,11 +500,11 @@
           normalized[field] = { task: block.task, project: block.project };
         }
         if (Object.hasOwn(day, 'pulse')) {
-          if (!object(day.pulse) || Object.keys(day.pulse).sort().join(',') !== Object.keys(PULSE_FIELDS).sort().join(',') ||
-            Object.keys(PULSE_FIELDS).some(field => typeof day.pulse[field] !== 'string')) {
-            throw new Error('Daily Pulse needs four optional text fields.');
+          if (!object(day.pulse) || requiredPulseFields.some(field => !Object.hasOwn(day.pulse, field)) ||
+            Object.entries(day.pulse).some(([field, value]) => !Object.hasOwn(PULSE_FIELDS, field) || typeof value !== 'string')) {
+            throw new Error('Daily Pulse needs valid text fields.');
           }
-          normalized.pulse = { ...day.pulse };
+          Object.assign(normalized.pulse, day.pulse);
         }
         if (Object.hasOwn(day, 'evBotNight')) {
           if (typeof day.evBotNight !== 'boolean') throw new Error('EV bot night must be true or false.');
@@ -523,7 +550,7 @@
     }
     function ensure(key) { return data.days[key] || (data.days[key] = blank(key)); }
     function renderScore() {
-      $('score').textContent = `Score ${score(data, selected)} / ${items(selected).length}`;
+      $('score').textContent = `Score ${score(data, selected)} / ${items(selected, data.days[selected]).length}`;
     }
     function renderStats() {
       const result = stats(data, today);
@@ -533,7 +560,7 @@
       $('week-detail').textContent = `${result.ticked} / ${result.possible} checks`;
       $('chart').replaceChildren();
       for (let i = -6; i <= 0; i++) {
-        const key = shift(today, i), count = score(data, key), max = items(key).length;
+        const key = shift(today, i), count = score(data, key), max = items(key, data.days[key]).length;
         const column = document.createElement('div');
         column.className = `bar-day${i === 0 ? ' today' : ''}`;
         column.setAttribute('role', 'img');
@@ -580,7 +607,7 @@
         const heading = document.createElement('h3'); heading.textContent = `${dayLabel(key)} ${localDate(key).getFullYear()}`;
         article.append(heading);
         for (const [field, label] of Object.entries(PULSE_FIELDS)) {
-          if (!pulse[field].trim()) continue;
+          if (!pulse[field]?.trim()) continue;
           const section = document.createElement('div'); section.className = 'note-field';
           const title = document.createElement('strong'); title.textContent = label;
           const content = document.createElement('p'); content.textContent = pulse[field];
@@ -623,8 +650,8 @@
       }
       $('task-complete').disabled = key > today || !taskText(day, block).trim();
       $('task-complete').setAttribute('aria-checked', String(taskDone(day, key, block)));
-      const index = scoredCheck(key, block);
-      $('task-scoring-note').textContent = key > today ? `Available to check off on ${dayLabel(key)}.` : index === null ? 'This block is unscored. Checking it off does not change your daily score.' : `Uses your existing controllable: ${items(key)[index]}.`;
+      const index = scoredCheck(key, block, day);
+      $('task-scoring-note').textContent = key > today ? `Available to check off on ${dayLabel(key)}.` : index === null ? 'Task completion is tracked separately from your daily score.' : `Checking off this task also marks “${items(key, day)[index]}”.`;
     }
     function openTaskDetails(key, block) {
       refreshDate(); detailTask = { key, block }; $('task-detail-status').textContent = '';
@@ -645,7 +672,7 @@
     function renderDay() {
       const date = localDate(selected), day = data.days[selected] || blank(selected);
       $('block-heading').textContent = selected === today ? "Today's Block 1" : 'Block 1 for this day';
-      $('daily-view').hidden = view !== 'day'; $('review-view').hidden = view !== 'week';
+      $('daily-scorecard').hidden = $('daily-view').hidden = view !== 'day'; $('review-view').hidden = view !== 'week';
       $('daily-tab').setAttribute('aria-pressed', String(view === 'day'));
       $('review-tab').setAttribute('aria-pressed', String(view === 'week'));
       $('date-title').textContent = view === 'week' ? `WEEK OF ${localDate(weekStart(selected)).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }).toUpperCase()}` : date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase();
@@ -667,12 +694,14 @@
       $('big-build-fields').hidden = date.getDay() !== 6;
       $('other-blocks').open = Boolean(day.block2.task || day.block2.project || (date.getDay() === 6 && (day.bigBuild.task || day.bigBuild.project)));
       for (const field of Object.keys(PULSE_FIELDS)) $(`pulse-${field}`).value = day.pulse[field];
-      $('pulse-card').open = hasPulse(day.pulse);
+      $('pulse-card').open = Object.keys(ORIGINAL_PROMPTS).some(field => day.pulse[field].trim());
       $('blocks-status').textContent = 'Autosaves on this device.';
       $('pulse-status').textContent = 'Autosaves on this device.';
       $('ev-status').textContent = ''; $('review-ev-status').textContent = '';
       $('checks').replaceChildren();
-      items(selected).forEach((text, index) => {
+      const checklist = items(selected, day);
+      $('checks-description').textContent = checklist === rhythm ? 'Tap each item you completed.' : 'Original checklist for this date.';
+      checklist.forEach((text, index) => {
         const button = document.createElement('button');
         button.type = 'button'; button.className = 'check-row'; button.setAttribute('role', 'checkbox');
         button.setAttribute('aria-checked', String(day.checks[index]));
@@ -759,7 +788,7 @@
       if (!detailTask || detailTask.key > today) return;
       const { key, block } = detailTask, day = data.days[key];
       if (!taskText(day, block).trim()) return;
-      const index = scoredCheck(key, block);
+      const index = scoredCheck(key, block, day);
       if (index !== null) day.checks[index] = !day.checks[index];
       else {
         if (!day.taskCards[block]) day.taskCards[block] = { doneWhen: '', time: '', context: '', completed: false };
@@ -784,9 +813,10 @@
       if (refreshDate() || selected !== today) return;
       const task = $('task-input').value.trim();
       if (ensure(shift(today, 1)).block1 !== task) delete ensure(shift(today, 1)).taskCards.block1;
-      ensure(today); ensure(shift(today, 1)).block1 = task;
+      const day = ensure(today);
+      ensure(shift(today, 1)).block1 = task;
       ensure(shift(today, 1)).block1Project = $('tomorrow-project').value;
-      if (items(today) === weekday && task) ensure(today).checks[5] = true;
+      if (items(today, day) === weekday && task) day.checks[5] = true;
       const persisted = save(); renderDay();
       $('task-status').textContent = persisted ? (task ? 'Saved for tomorrow. One less decision.' : "Tomorrow's task cleared.") : 'Updated in this tab. Export a backup to keep it.';
     });
